@@ -6,6 +6,8 @@
 
 # install.packages("BiocManager")
 # BiocManager::install("EBImage")
+# install.packages("keras")
+
 library(EBImage)
 library(data.table)
 library(keras)
@@ -19,7 +21,7 @@ library(tensorflow)
 # py_install("Pillow",envname='py3-virtualenv')
 
 
-tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
+tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
 trans$Images <- sapply(metadatasep,`[`,9)
@@ -27,23 +29,26 @@ trans<-trans[!is.na(trans$Images),]
 trans$Images  <- gsub("[^[:alnum:][:blank:]+./_-]", "", trans$Images )
 trans$Images  <- gsub(".JPG",".JPG:",trans$Images )
 imglist <- strsplit(trans$Images,":")
-trans$Img1 <- sapply(imglist,`[`,1)
-trans$Img2 <- sapply(imglist,`[`,2)
-trans$Img3 <- sapply(imglist,`[`,3)
+trans$IMG1WLOCATION <- sapply(imglist,`[`,1)
+trans$IMG2WLOCATION <- sapply(imglist,`[`,2)
+trans$IMG3WLOCATION <- sapply(imglist,`[`,3)
 
-s_c_info <- strsplit(trans$Img1,"/")
-s_c_corr <- sapply(s_c_info,`[`,4)
-s_c_infosplit <- strsplit(s_c_corr,"_")
+s_c_info <- strsplit(trans$IMG1WLOCATION,"/")
+trans$IMG1NAME <- sapply(strsplit(trans$IMG1WLOCATION,"/"),`[`,4)
+trans$IMG2NAME <- sapply(strsplit(trans$IMG2WLOCATION,"/"),`[`,4)
+trans$IMG3NAME <- sapply(strsplit(trans$IMG3WLOCATION,"/"),`[`,4)
+
+s_c_infosplit <- strsplit(trans$IMG1NAME,"_")
 trans$season <- sapply(s_c_infosplit,`[`,1)
 trans$site <- sapply(s_c_infosplit,`[`,2)
 
-rm(metadatasep,imglist,s_c_info,s_c_corr,s_c_infosplit)
+rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 
 # trans <- trans[trans$retired_at!=""&trans$retirement_reason=="consensus",!c("metadata","locations")]
 # trans <- trans[trans$retired_at!="",!c("metadata","locations")]
 
 
-ANSWERS <- fread("~/Downloads/CC_non_aggregated.csv")
+ANSWERS <- fread("C:/Users/cowl0037/Downloads/CC_non_aggregated.csv")
 merge.ans <- ANSWERS[,c("season","site","roll","subject_id","question__species")]
 sp.sum <- merge.ans[,.(sum=length(subject_id)),.(question__species)]
 sp.sumord <- sp.sum[order(-sum)]
@@ -55,24 +60,24 @@ info <- merge(trans,merge.ans,by=c("season","site","subject_id"))
 info$BlankorNot <- ifelse(info$question__species=="blank",0,1)
 info$SimpleID <- ifelse(info$question__species=="blank",0,ifelse(info$question__species=="humanorvehicle",1,2))
 table(info$question__species)
+table(info$BlankorNot)
 
 
 length(unique(info$subject_id))
 length(info$subject_id)
-info$IMG1NAME <- substr(info$Img1,nchar(info$Img1)-11,nchar(info$Img1))
-info$IMG2NAME <- substr(info$Img2,nchar(info$Img2)-11,nchar(info$Img2))
-info$IMG3NAME <- substr(info$Img3,nchar(info$Img3)-11,nchar(info$Img3))
 
-info$IMG1WLOCATION <- paste(info$season,info$site,info$IMG1NAME,sep="/")
-info$IMG2WLOCATION <- paste(info$season,info$site,info$IMG2NAME,sep="/")
-info$IMG3WLOCATION <- paste(info$season,info$site,info$IMG3NAME,sep="/")
+# info$IMG1WLOCATION <- paste(info$season,info$site,info$IMG1NAME,sep="/")
+# info$IMG2WLOCATION <- paste(info$season,info$site,info$IMG2NAME,sep="/")
+# info$IMG3WLOCATION <- paste(info$season,info$site,info$IMG3NAME,sep="/")
 
 names(info)
-infolong <- melt(info,id.vars=c("season","site","subject_id","question__species","SPID","SimpleID","BlankorNot"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
+# infolong <- melt(info,id.vars=c("season","site","subject_id","question__species","SPID","SimpleID","BlankorNot"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
+# infolong2 <- melt(info,id.vars=c("season","site","subject_id","question__species","SPID","SimpleID","BlankorNot"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageWithLocation")
+# infolong$ImageWithLocation <- infolong2$ImageWithLocation
 
-infolong$ImageWithLocation <- paste(infolong$season,infolong$site,infolong$ImageName,sep="/")
+# infolong$ImageWithLocation <- paste(infolong$season,infolong$site,infolong$ImageName,sep="/")
 
-rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp)
+rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp,infolong2)
 
 ######################
 # read in images and add together to make 1 x 3 channel image of all three!
@@ -80,6 +85,8 @@ rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp)
 # readingroup <- function(subj_id,info,infolong){
 readingroup <- function(subj_id){
 if(!is.na(info$IMG1NAME[info$subject_id==subj_id])&!is.na(info$IMG2NAME[info$subject_id==subj_id])&!is.na(info$IMG3NAME[info$subject_id==subj_id])){
+setwd("C:/Users/cowl0037/Documents/CameraTrapImages")
+subj_id <- list.files()
 
 image_1 <- readImage(info$IMG1WLOCATION[info$subject_id==subj_id])
 image_1a <- image_1[,35:(dim(image_1)[2]-35),1]#cut off bottom of image
@@ -106,7 +113,7 @@ imgvect <- as.vector(c(imgarray_1a,imgarray_2a,imgarray_3a))
 # return(outlist)
 
 x_train <<- rbind(x_train,c(imgvect))
-y_train <<- append(y_train,infolong$BlankorNot[infolong$subject_id==paste(subj_id)][1])
+y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
 
 }
   }
