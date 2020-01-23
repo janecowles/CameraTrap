@@ -29,7 +29,7 @@ library(reticulate)
 # py_install("Pillow",envname='py3-virtualenv')
 
 library(tensorflow)
-install_tensorflow(version = "2.0.0-gpu")
+# install_tensorflow(version = "2.0.0-gpu")
 library(keras)
 # install_keras()
 
@@ -109,12 +109,12 @@ system.time(imagelist <- list.files(pattern = ".JPG",recursive = T))
 imagelist2 <- intersect(imagelist,infolong$ImageNameWLOCATION)
 imagesamp <- sample(intersect(imagelist2,infolong$ImageNameWLOCATION),20)
 #So i can dynamically set image resize here and in model
-pixelresize = 150
+pixelresize = 256
 
 # subj_id = subj_list[100] #29319149 is some turkeys
 subj_id <- 29319149
 
-readingroup <- function(subj_id){
+readingroup <- function(subj_id,testortrain="train"){
 if(!is.na(info$IMG1NAME[info$subject_id==subj_id])&!is.na(info$IMG2NAME[info$subject_id==subj_id])&!is.na(info$IMG3NAME[info$subject_id==subj_id])){
 
 image_1 <- readImage(info$IMG1WLOCATION[info$subject_id==subj_id])
@@ -172,20 +172,29 @@ totresize <- resize(tot,pixelresize,pixelresize)
 
 totdiffvect <- as.vector(as.array(imageData(totresize)))
 
+
+
+if(testortrain=="train"){
+  trainsubj_used <<- append(trainsubj_used,subj_id)
 xdiff_train <<- rbind(xdiff_train,c(totdiffvect))
-
-
-# outlist <- list(imgvect,infolong$BlankorNot[infolong$subject_id==paste(subj_id)][1])
-# return(outlist)
-
 # x_train <<- rbind(x_train,c(imgvect))
 y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
-
+}else if(testortrain=="test"){
+    testsubj_used <<- append(testsubj_used,subj_id)
+  xdiff_test <<- rbind(xdiff_test,c(totdiffvect))
+# x_test <<- rbind(x_test,c(imgvect))
+y_test <<- append(y_test,info$BlankorNot[info$subject_id==paste(subj_id)][1])
+}
 }
   }
 
-subj_list <- info$subject_id[info$IMG1WLOCATION%in%imagelist2][sample(1:100)]
 
+percentfortraining <- 0.6
+totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:5)]
+totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:5)]
+totsubj_list <- c(totsubj_list0,totsubj_list1)
+trainsubj_list <- sample(totsubj_list,round(percentfortraining*length(totsubj_list))) ###using 60% of images to train,
+testsubj_list <- setdiff(totsubj_list,trainsubj_list)
 # info[info$IMG1WLOCATION%in%imagelist2][1:15]
 ### the parallel maybe takes time to read in all the info/info long stuff? maybe?
 # library(parallel)
@@ -197,12 +206,13 @@ subj_list <- info$subject_id[info$IMG1WLOCATION%in%imagelist2][sample(1:100)]
 # stopCluster(cl)
 # output <- lapply(subj_list,readingroup)
 
-xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));system.time(lapply(subj_list,readingroup))
+trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));system.time(lapply(trainsubj_list,readingroup,"train"))
+testsubj_used <- NULL;xdiff_test <- array(data=NA,dim=c(0));x_test <- array(data=NA,dim=c(0));y_test <- array(data=NA,dim=c(0));system.time(lapply(testsubj_list,readingroup,"test"))
 
 # y_train <- c(rep(0,12),rep(1,13))
 table(y_train)
 y_train <- to_categorical(y_train,num_classes = 2) #change to 30 when using full sp (SPID instead of SimpleID)
-
+y_test <- to_categorical(y_test,num_classes = 2)
 
 #####model xdiff
 model_xdiff <- keras_model_sequential() 
@@ -225,15 +235,30 @@ history <- model_xdiff %>% fit(
   epochs = 30, batch_size = 128, 
   validation_split = 0.2
 )
-model_xdiff %>% predict_classes(xdiff_train)
-y_train[,2]
-y_t_2 <- ifelse(y_train[,2]==0,1,2)
-table(y_t_2,model_xdiff %>% predict_classes(xdiff_train))
+
+model_xdiff %>% evaluate(xdiff_test, y_test,verbose = 0)
+preds<- model_xdiff %>% predict_classes(xdiff_test)
+table(y_test,preds)
+
+# y_train[,2]
+# y_t_2 <- ifelse(y_train[,2]==0,1,2)
+# table(y_t_2,model_xdiff %>% predict_classes(xdiff_train))
+
+
+saveRDS(xdiff_train,"xdiff_train_22Jan2020.Rds")
+testing_save23<- readRDS("xdiff_train_22Jan2020.Rds")
+
+fillingspace <- rbind(testing_save,testing_save2)
+filling2 <- rbind(fillingspace,testing_save)
+filling3 <- cbind(filling3,filling3)
+saveRDS(filling3,"Isthishuge.Rds")
 
 
 
+bigolvector <-rep(1,100000)
 
 
+xdiff_train==testing_save
 
 #### below is original function that doesn't use triplicates
 ######################
