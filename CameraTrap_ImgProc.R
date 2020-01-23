@@ -7,12 +7,12 @@
 # install.packages("BiocManager")
 # BiocManager::install("EBImage")
 
-remove.packages("tensorflow")
-remove.packages("keras")
-library(devtools)
-devtools::install_github("rstudio/reticulate")
-devtools::install_github("rstudio/tensorflow")
-devtools::install_github("rstudio/keras")
+# remove.packages("tensorflow")
+# remove.packages("keras")
+# library(devtools)
+# devtools::install_github("rstudio/reticulate")
+# devtools::install_github("rstudio/tensorflow")
+# devtools::install_github("rstudio/keras")
 
 # install.packages("tensorflow")
 # install.packages("keras")
@@ -112,7 +112,7 @@ imagesamp <- sample(intersect(imagelist2,infolong$ImageNameWLOCATION),20)
 pixelresize = 256
 
 # subj_id = subj_list[100] #29319149 is some turkeys
-subj_id <- 29319149
+# subj_id <- 29319149
 
 readingroup <- function(subj_id,testortrain="train"){
 if(!is.na(info$IMG1NAME[info$subject_id==subj_id])&!is.na(info$IMG2NAME[info$subject_id==subj_id])&!is.na(info$IMG3NAME[info$subject_id==subj_id])){
@@ -189,9 +189,9 @@ y_test <<- append(y_test,info$BlankorNot[info$subject_id==paste(subj_id)][1])
   }
 
 
-percentfortraining <- 0.6
-totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:5)]
-totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:5)]
+percentfortraining <- 0.8
+totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:10000)]
+totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:10000)]
 totsubj_list <- c(totsubj_list0,totsubj_list1)
 trainsubj_list <- sample(totsubj_list,round(percentfortraining*length(totsubj_list))) ###using 60% of images to train,
 testsubj_list <- setdiff(totsubj_list,trainsubj_list)
@@ -206,8 +206,18 @@ testsubj_list <- setdiff(totsubj_list,trainsubj_list)
 # stopCluster(cl)
 # output <- lapply(subj_list,readingroup)
 
+
+
+
 trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));system.time(lapply(trainsubj_list,readingroup,"train"))
+
+fwrite(data.frame(trainsubj_used,y_train),"train_info_22Jan2020.csv")
+saveRDS(xdiff_train,"xdiff_train_22Jan2020.Rds")
+
 testsubj_used <- NULL;xdiff_test <- array(data=NA,dim=c(0));x_test <- array(data=NA,dim=c(0));y_test <- array(data=NA,dim=c(0));system.time(lapply(testsubj_list,readingroup,"test"))
+
+fwrite(data.frame(testsubj_used,y_test),"test_info_22Jan2020.csv")
+saveRDS(xdiff_test,"xdiff_test_22Jan2020.Rds")
 
 # y_train <- c(rep(0,12),rep(1,13))
 table(y_train)
@@ -245,20 +255,6 @@ table(y_test,preds)
 # table(y_t_2,model_xdiff %>% predict_classes(xdiff_train))
 
 
-saveRDS(xdiff_train,"xdiff_train_22Jan2020.Rds")
-testing_save23<- readRDS("xdiff_train_22Jan2020.Rds")
-
-fillingspace <- rbind(testing_save,testing_save2)
-filling2 <- rbind(fillingspace,testing_save)
-filling3 <- cbind(filling3,filling3)
-saveRDS(filling3,"Isthishuge.Rds")
-
-
-
-bigolvector <-rep(1,100000)
-
-
-xdiff_train==testing_save
 
 #### below is original function that doesn't use triplicates
 ######################
