@@ -20,6 +20,7 @@
 library(EBImage)
 library(data.table)
 
+
 library(reticulate)
 # use_python("C:/Users/cowl0037/anaconda3/envs/r-reticulate/python.exe")
 # 
@@ -35,6 +36,7 @@ library(keras)
 
 
 tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
+tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
 trans$Images <- sapply(metadatasep,`[`,9)
@@ -62,6 +64,7 @@ rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 
 
 ANSWERS <- fread("C:/Users/cowl0037/Downloads/CC_non_aggregated.csv")
+ANSWERS <- fread("~/Downloads/CC_non_aggregated.csv")
 merge.ans <- ANSWERS[,c("season","site","roll","subject_id","question__species")]
 sp.sum <- merge.ans[,.(sum=length(subject_id)),.(question__species)]
 sp.sumord <- sp.sum[order(-sum)]
@@ -69,11 +72,16 @@ sp.sumord$SPID <- -0:(nrow(sp.sumord)-1)
 merge.ans <- merge(merge.ans,sp.sumord[,-c("sum")],by=c("question__species"))
 
 
+
 info <- merge(trans,merge.ans,by=c("season","site","subject_id"))
+
+
 info$BlankorNot <- ifelse(info$question__species=="blank",0,1)
 info$SimpleID <- ifelse(info$question__species=="blank",0,ifelse(info$question__species=="humanorvehicle",1,2))
 table(info$question__species)
 table(info$BlankorNot)
+
+
 
 
 # length(unique(info$subject_id))
@@ -104,7 +112,7 @@ rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp,infolong2)
 
 
 setwd("C:/Users/cowl0037/Documents/CameraTrapImages")
-
+setwd("~/Desktop/CameraTrapImages")
 system.time(imagelist <- list.files(pattern = ".JPG",recursive = T))
 imagelist2 <- intersect(imagelist,infolong$ImageNameWLOCATION)
 imagesamp <- sample(intersect(imagelist2,infolong$ImageNameWLOCATION),20)
@@ -176,9 +184,12 @@ totdiffvect <- as.vector(as.array(imageData(totresize)))
 
 if(testortrain=="train"){
   trainsubj_used <<- append(trainsubj_used,subj_id)
-xdiff_train <<- rbind(xdiff_train,c(totdiffvect))
+# xdiff_train <<- rbind(xdiff_train,c(totdiffvect))
 # x_train <<- rbind(x_train,c(imgvect))
-y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
+# y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
+return(list(totdiffvect,info$BlankorNot[info$subject_id==paste(subj_id)][1]))
+# return(list(88,info$BlankorNot[info$subject_id==paste(subj_id)][1]))
+
 }else if(testortrain=="test"){
     testsubj_used <<- append(testsubj_used,subj_id)
   xdiff_test <<- rbind(xdiff_test,c(totdiffvect))
@@ -193,19 +204,39 @@ percentfortraining <- 0.8
 totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:10000)]
 totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:10000)]
 totsubj_list <- c(totsubj_list0,totsubj_list1)
+# totsubj_list <- info$subject_id[info$IMG1WLOCATION%in%imagelist2]
+
 trainsubj_list <- sample(totsubj_list,round(percentfortraining*length(totsubj_list))) ###using 60% of images to train,
 testsubj_list <- setdiff(totsubj_list,trainsubj_list)
+
+# infotrain <- 
+
+
 # info[info$IMG1WLOCATION%in%imagelist2][1:15]
 ### the parallel maybe takes time to read in all the info/info long stuff? maybe?
-# library(parallel)
-# no_cores <- detectCores()-1
-# cl<-makeCluster(no_cores)
-# clusterExport(cl,c("readImage","resize","colorMode<-","Grayscale","imageData"),envir=environment())
+
+
+trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0))
+library(doParallel)
+registerDoParallel(cores=detectCores()-1)
+system.time(train_out <- foreach(i=trainsubj_list) %dopar% readingroup(i,"train"))
+xdiff_train <- do.call(rbind,lapply(train_out,`[[`,1))
+y_train <- unlist(lapply(train_out,`[[`,2))
+##### SWITCH THIS ALL TO doParallel words in https://cran.r-project.org/web/packages/doParallel/vignettes/gettingstartedParallel.pdf page 3-4 ish
+no_cores <- detectCores()-1
+cl<-makeCluster(no_cores)
+# clusterExport(cl,c("info"))
+# clusterEvalQ(cl, {
+#   library(EBImage)
+#   library(data.table)
+# })
 # system.time(output <- data.table::rbindlist(parLapply(cl,subj_list,readingroup,info=info,infolong=infolong)))
 # # system.time(output <- data.table::rbindlist(parLapply(cl,subj_list,readingroup,info=info,infolong=infolong)))
-# stopCluster(cl)
-# output <- lapply(subj_list,readingroup)
 
+# output <- lapply(subj_list,readingroup)
+# parLapply(trainsubj_list,readingroup,"train")
+parLapply(trainsubj_list,print)
+stopCluster(cl)
 
 
 
