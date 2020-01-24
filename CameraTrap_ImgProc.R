@@ -115,7 +115,7 @@ setwd("C:/Users/cowl0037/Documents/CameraTrapImages")
 setwd("~/Desktop/CameraTrapImages")
 system.time(imagelist <- list.files(pattern = ".JPG",recursive = T))
 imagelist2 <- intersect(imagelist,infolong$ImageNameWLOCATION)
-imagesamp <- sample(intersect(imagelist2,infolong$ImageNameWLOCATION),20)
+# imagesamp <- sample(intersect(imagelist2,infolong$ImageNameWLOCATION),20)
 #So i can dynamically set image resize here and in model
 pixelresize = 256
 
@@ -183,11 +183,11 @@ totdiffvect <- as.vector(as.array(imageData(totresize)))
 
 
 if(testortrain=="train"){
-  trainsubj_used <<- append(trainsubj_used,subj_id)
+  # trainsubj_used <<- append(trainsubj_used,subj_id)
 # xdiff_train <<- rbind(xdiff_train,c(totdiffvect))
 # x_train <<- rbind(x_train,c(imgvect))
 # y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
-return(list(totdiffvect,info$BlankorNot[info$subject_id==paste(subj_id)][1]))
+return(list(totdiffvect,info$BlankorNot[info$subject_id==paste(subj_id)][1],subj_id))
 # return(list(88,info$BlankorNot[info$subject_id==paste(subj_id)][1]))
 
 }else if(testortrain=="test"){
@@ -201,8 +201,8 @@ y_test <<- append(y_test,info$BlankorNot[info$subject_id==paste(subj_id)][1])
 
 
 percentfortraining <- 0.8
-totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:10000)]
-totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:10000)]
+totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:1000)]
+totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:1000)]
 totsubj_list <- c(totsubj_list0,totsubj_list1)
 # totsubj_list <- info$subject_id[info$IMG1WLOCATION%in%imagelist2]
 
@@ -216,15 +216,17 @@ testsubj_list <- setdiff(totsubj_list,trainsubj_list)
 ### the parallel maybe takes time to read in all the info/info long stuff? maybe?
 
 
-trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0))
+# trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0))
 library(doParallel)
 registerDoParallel(cores=detectCores()-1)
-system.time(train_out <- foreach(i=trainsubj_list) %dopar% readingroup(i,"train"))
+system.time(train_out <- foreach(i=trainsubj_list,.packages = c("EBImage")) %dopar% readingroup(i,"train"))
 xdiff_train <- do.call(rbind,lapply(train_out,`[[`,1))
 y_train <- unlist(lapply(train_out,`[[`,2))
+subjused_train <- unlist(lapply(train_out,`[[`,3))
+
 ##### SWITCH THIS ALL TO doParallel words in https://cran.r-project.org/web/packages/doParallel/vignettes/gettingstartedParallel.pdf page 3-4 ish
-no_cores <- detectCores()-1
-cl<-makeCluster(no_cores)
+# no_cores <- detectCores()-1
+# cl<-makeCluster(no_cores)
 # clusterExport(cl,c("info"))
 # clusterEvalQ(cl, {
 #   library(EBImage)
@@ -235,8 +237,8 @@ cl<-makeCluster(no_cores)
 
 # output <- lapply(subj_list,readingroup)
 # parLapply(trainsubj_list,readingroup,"train")
-parLapply(trainsubj_list,print)
-stopCluster(cl)
+# parLapply(trainsubj_list,print)
+# stopCluster(cl)
 
 
 
