@@ -122,7 +122,7 @@ pixelresize = 256
 # subj_id = subj_list[100] #29319149 is some turkeys
 # subj_id <- 29319149
 
-readingroup <- function(subj_id,testortrain="train"){
+readingroup <- function(subj_id){
 if(!is.na(info$IMG1NAME[info$subject_id==subj_id])&!is.na(info$IMG2NAME[info$subject_id==subj_id])&!is.na(info$IMG3NAME[info$subject_id==subj_id])){
 
 image_1 <- readImage(info$IMG1WLOCATION[info$subject_id==subj_id])
@@ -147,24 +147,7 @@ imgarray_3a <- as.array(imageData(imgresize_3a))
 
 imgvect <- as.vector(c(imgarray_1a,imgarray_2a,imgarray_3a))
 
-
-####this is where I add together the images for motion analysis
-# display(image_3a)
-# 
-# display(rgb_123 <- rgbImage(image_1a,image_2a,image_3a))
-# 
-# oneminustwo <- rgb_123[,,1]-rgb_123[,,2]
-# 
-# thr_1min2 <- oneminustwo > .1
-# 
-# twominusthree <- rgb_123[,,2]-rgb_123[,,3]
-# 
-# thr_2min3 <- twominusthree > .1
-# 
-# tot <- scale(thr_1min2+thr_2min3)
-
-# display(tot)
-
+#### motion detection (xdiff)
 oneminustwo <- image_1a-image_2a
 
 thr_1min2 <- oneminustwo > .1
@@ -182,27 +165,15 @@ totdiffvect <- as.vector(as.array(imageData(totresize)))
 
 
 
-if(testortrain=="train"){
-  # trainsubj_used <<- append(trainsubj_used,subj_id)
-# xdiff_train <<- rbind(xdiff_train,c(totdiffvect))
-# x_train <<- rbind(x_train,c(imgvect))
-# y_train <<- append(y_train,info$BlankorNot[info$subject_id==paste(subj_id)][1])
-return(list(totdiffvect,info$BlankorNot[info$subject_id==paste(subj_id)][1],subj_id))
-# return(list(88,info$BlankorNot[info$subject_id==paste(subj_id)][1]))
+return(list(totdiffvect,info$BlankorNot[info$subject_id==paste(subj_id)][1],subj_id,imgvect))
 
-}else if(testortrain=="test"){
-    testsubj_used <<- append(testsubj_used,subj_id)
-  xdiff_test <<- rbind(xdiff_test,c(totdiffvect))
-# x_test <<- rbind(x_test,c(imgvect))
-y_test <<- append(y_test,info$BlankorNot[info$subject_id==paste(subj_id)][1])
-}
 }
   }
 
 
 percentfortraining <- 0.8
-totsubj_list0 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0][sample(1:1000)]
-totsubj_list1 <- info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1][sample(1:1000)]
+totsubj_list0 <- sample(info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==0],5000)
+totsubj_list1 <- sample(info$subject_id[info$IMG1WLOCATION%in%imagelist2&info$BlankorNot==1],5000)
 totsubj_list <- c(totsubj_list0,totsubj_list1)
 # totsubj_list <- info$subject_id[info$IMG1WLOCATION%in%imagelist2]
 
@@ -219,38 +190,32 @@ testsubj_list <- setdiff(totsubj_list,trainsubj_list)
 # trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0))
 library(doParallel)
 registerDoParallel(cores=detectCores()-1)
-system.time(train_out <- foreach(i=trainsubj_list,.packages = c("EBImage")) %dopar% readingroup(i,"train"))
+system.time(train_out <- foreach(i=trainsubj_list,.packages = c("EBImage")) %dopar% readingroup(i))
 xdiff_train <- do.call(rbind,lapply(train_out,`[[`,1))
 y_train <- unlist(lapply(train_out,`[[`,2))
-subjused_train <- unlist(lapply(train_out,`[[`,3))
+trainsubj_used <- unlist(lapply(train_out,`[[`,3))
+x_train <- do.call(rbind,lapply(train_out,`[[`,4))
 
-##### SWITCH THIS ALL TO doParallel words in https://cran.r-project.org/web/packages/doParallel/vignettes/gettingstartedParallel.pdf page 3-4 ish
-# no_cores <- detectCores()-1
-# cl<-makeCluster(no_cores)
-# clusterExport(cl,c("info"))
-# clusterEvalQ(cl, {
-#   library(EBImage)
-#   library(data.table)
-# })
-# system.time(output <- data.table::rbindlist(parLapply(cl,subj_list,readingroup,info=info,infolong=infolong)))
-# # system.time(output <- data.table::rbindlist(parLapply(cl,subj_list,readingroup,info=info,infolong=infolong)))
-
-# output <- lapply(subj_list,readingroup)
-# parLapply(trainsubj_list,readingroup,"train")
-# parLapply(trainsubj_list,print)
-# stopCluster(cl)
+system.time(test_out <- foreach(i=testsubj_list[1:4],.packages = c("EBImage")) %dopar% readingroup(i))
+xdiff_test <- do.call(rbind,lapply(test_out,`[[`,1))
+y_test <- unlist(lapply(test_out,`[[`,2))
+testsubj_used <- unlist(lapply(test_out,`[[`,3))
+x_test <- do.call(rbind,lapply(test_out,`[[`,4))
 
 
 
-trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));system.time(lapply(trainsubj_list,readingroup,"train"))
+#for use when not doParallel!
+# trainsubj_used <- NULL;xdiff_train <- array(data=NA,dim=c(0));x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));system.time(lapply(trainsubj_list,readingroup,"train"))
 
-fwrite(data.frame(trainsubj_used,y_train),"train_info_22Jan2020.csv")
-saveRDS(xdiff_train,"xdiff_train_22Jan2020.Rds")
+fwrite(data.frame(trainsubj_used,y_train),"train_info_25Jan2020.csv")
+saveRDS(xdiff_train,"xdiff_train_25Jan2020.Rds")
+saveRDS(x_train,"x_train_25Jan2020.Rds")
 
-testsubj_used <- NULL;xdiff_test <- array(data=NA,dim=c(0));x_test <- array(data=NA,dim=c(0));y_test <- array(data=NA,dim=c(0));system.time(lapply(testsubj_list,readingroup,"test"))
-
-fwrite(data.frame(testsubj_used,y_test),"test_info_22Jan2020.csv")
-saveRDS(xdiff_test,"xdiff_test_22Jan2020.Rds")
+# testsubj_used <- NULL;xdiff_test <- array(data=NA,dim=c(0));x_test <- array(data=NA,dim=c(0));y_test <- array(data=NA,dim=c(0));system.time(lapply(testsubj_list,readingroup,"test"))
+# 
+fwrite(data.frame(testsubj_used,y_test),"test_info_25Jan2020.csv")
+saveRDS(xdiff_test,"xdiff_test_25Jan2020.Rds")
+saveRDS(x_test,"x_test_25Jan2020.Rds")
 
 # y_train <- c(rep(0,12),rep(1,13))
 table(y_train)
@@ -281,7 +246,19 @@ history <- model_xdiff %>% fit(
 
 model_xdiff %>% evaluate(xdiff_test, y_test,verbose = 0)
 preds<- model_xdiff %>% predict_classes(xdiff_test)
-table(y_test,preds)
+table(y_test[,2],preds)
+confusion <- cbind(y_test[,2],preds)
+whicharewrong <- as.data.frame(cbind(confusion,testsubj_used))
+whicharewrong$testsubj_used[whicharewrong$V1!=whicharewrong$preds]
+
+info$IMG1NAME[info$subject_id%in%whicharewrong$testsubj_used[whicharewrong$V1!=whicharewrong$preds]]
+table(info$site[info$subject_id%in%totsubj_list])
+totsubj_list
+
+
+
+
+
 
 # y_train[,2]
 # y_t_2 <- ifelse(y_train[,2]==0,1,2)
