@@ -180,7 +180,6 @@ totsubj_list <- c(totsubj_list0,totsubj_list1)
 trainsubj_list <- sample(totsubj_list,round(percentfortraining*length(totsubj_list))) ###using 60% of images to train,
 testsubj_list <- setdiff(totsubj_list,trainsubj_list)
 
-# infotrain <- 
 
 
 # info[info$IMG1WLOCATION%in%imagelist2][1:15]
@@ -196,7 +195,7 @@ y_train <- unlist(lapply(train_out,`[[`,2))
 trainsubj_used <- unlist(lapply(train_out,`[[`,3))
 x_train <- do.call(rbind,lapply(train_out,`[[`,4))
 
-system.time(test_out <- foreach(i=testsubj_list[1:4],.packages = c("EBImage")) %dopar% readingroup(i))
+system.time(test_out <- foreach(i=testsubj_list,.packages = c("EBImage")) %dopar% readingroup(i))
 xdiff_test <- do.call(rbind,lapply(test_out,`[[`,1))
 y_test <- unlist(lapply(test_out,`[[`,2))
 testsubj_used <- unlist(lapply(test_out,`[[`,3))
@@ -217,10 +216,29 @@ fwrite(data.frame(testsubj_used,y_test),"test_info_25Jan2020.csv")
 saveRDS(xdiff_test,"xdiff_test_25Jan2020.Rds")
 saveRDS(x_test,"x_test_25Jan2020.Rds")
 
+
+
 # y_train <- c(rep(0,12),rep(1,13))
 table(y_train)
 y_train <- to_categorical(y_train,num_classes = 2) #change to 30 when using full sp (SPID instead of SimpleID)
 y_test <- to_categorical(y_test,num_classes = 2)
+
+############# above here is prep
+#######################################
+
+#######################################
+
+##### read in what I made 25 Jan 2020
+train_info <- read.csv("train_info_25Jan2020.csv")
+y_train <- to_categorical(train_info[,2])
+xdiff_train <- readRDS("xdiff_train_25Jan2020.Rds")
+x_train <- readRDS("x_train_25Jan2020.Rds")
+test_info <- read.csv("test_info_25Jan2020.csv")
+y_test <- to_categorical(test_info[,2])
+xdiff_test <- readRDS("xdiff_test_25Jan2020.Rds")
+x_test <- readRDS("x_test_25Jan2020.Rds")
+
+
 
 #####model xdiff
 model_xdiff <- keras_model_sequential() 
@@ -260,60 +278,12 @@ totsubj_list
 
 
 
-# y_train[,2]
-# y_t_2 <- ifelse(y_train[,2]==0,1,2)
-# table(y_t_2,model_xdiff %>% predict_classes(xdiff_train))
-
-
-
-#### below is original function that doesn't use triplicates
-######################
-######################
-######################
-#### read in images
-# setwd("~/Desktop/CameraTrap")
-
-system.time(imagelist <- list.files(pattern = ".JPG",recursive = T))
-imagelist2 <- intersect(imagelist,infolong$ImageWithLocation)
-imagesamp <- sample(intersect(imagelist2,infolong$ImageWithLocation),2000)
-
-
-readin <- function(image){
-
-img <- readImage(image)
-
-# display(img)
-#cut off bottom of image
-img1 <- img[,35:(dim(img)[2]-35),1]
-colorMode(img1)<-Grayscale
-imgresize <- resize(img1,256,256)
-# display(img1)
-# dim(img1)
-imgarray <- as.array(imageData(imgresize))
-imgvect <- as.vector(imgarray)
-x_train <<- rbind(x_train,c(imgvect))
-# y_train <<- append(y_train,infolong$SPID[infolong$ImageWithLocation==paste(image)][1])
-# y_train <<- append(y_train,infolong$SimpleID[infolong$ImageWithLocation==paste(image)][1])
-y_train <<- append(y_train,infolong$BlankorNot[infolong$ImageWithLocation==paste(image)][1])
-
-return(infolong$SimpleID[infolong$ImageWithLocation==paste(image)][1])
-# return(x_train)
-# return(y_train)
-
-}
-
-x_train <- array(data=NA,dim=c(0));y_train <- array(data=NA,dim=c(0));lapply(imagesamp,readin)
-
-
-# dim(x_train)
-table(y_train)
-y_train <- to_categorical(y_train,num_classes = 2) #change to 30 when using full sp (SPID instead of SimpleID)
 
 
 
 model <- keras_model_sequential() 
 model %>% 
-  layer_dense(units = 256, activation = "relu", input_shape = c(65536)) %>% 
+  layer_dense(units = 256, activation = "relu", input_shape = c(3*pixelresize*pixelresize)) %>% 
   layer_dropout(rate = 0.4) %>% 
   layer_dense(units = 128, activation = "relu") %>%
   layer_dropout(rate = 0.3) %>%
