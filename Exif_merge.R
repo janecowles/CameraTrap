@@ -4,7 +4,7 @@ library(data.table)
 library(ggplot2)
 
 
-tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
+tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_6Feb.csv")
 # tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
@@ -28,8 +28,7 @@ trans$site <- sapply(s_c_infosplit,`[`,2)
 
 rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 
-zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications.csv")
-
+zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_6Feb.csv")
 
 zoo_dl$annotations2 <- gsub("\"", "", zoo_dl$annotations )
 
@@ -39,6 +38,12 @@ annot_split2 <- strsplit(zoo_dl$annotations2,",answers:")
 annot_split <- strsplit(sapply(annot_split2,`[`,1),"choice:")
 zoo_dl$speciesID <- sapply(annot_split,`[`,2)
 zoo_dl$speciesID <- tolower(zoo_dl$speciesID)
+
+
+#WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
+zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
+
+
 #this is for later when we want to maybe cut out images that only have 1 classification, or something of that sort.... re-merged in below
 zoo_dlTOT <-zoo_dl[, .(sum=length(speciesID)), by=.(subject_ids)] 
 #take the top classification for each subject
@@ -79,15 +84,15 @@ FINAL <- merge(merge1,infolong,by.x="new_path",by.y="ImageNameWLOCATION")
 #you could use zoo_dlTOT to subset subject_ids out that have a classification count of less than a certain value. I'll just add that in right here and you can decide later ... (merge 3)
 
 FINAL_wCOUNTS <- merge(FINAL,zoo_dlTOT,by.x="subject_id",by.y="subject_ids",all.x=T)
-
+#RN this is 860888 - uploading new file on 6 feb -- what changes?
 #write to a file
 fwrite(FINAL_wCOUNTS,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID.csv")
 
 #actually not that many of these have just 1 classification. That'll change once we get Season 4 in here too? maybe? Waiting for Vlad to change the permissions
-hist(FINAL_wCOUNTS$sum)
+sort(FINAL_wCOUNTS$sum,decreasing = T)
 
 # #a little plotting
-# ggplot(FINAL_wCOUNTS,aes(speciesID,AmbientTemperature))+geom_boxplot()
-# FINAL_wCOUNTS$date_taken <- as.POSIXct(FINAL_wCOUNTS$date_taken,format= "%Y:%m:%d %H:%M:%S")
-# ggplot(FINAL_wCOUNTS,aes(speciesID,date_taken))+geom_boxplot()
+ggplot(FINAL_wCOUNTS,aes(speciesID,AmbientTemperature))+geom_boxplot()
+FINAL_wCOUNTS$date_taken <- as.POSIXct(FINAL_wCOUNTS$date_taken,format= "%Y:%m:%d %H:%M:%S")
+ggplot(FINAL_wCOUNTS,aes(speciesID,date_taken))+geom_boxplot()
 # 
