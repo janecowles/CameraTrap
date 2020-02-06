@@ -63,7 +63,7 @@ rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 # trans <- trans[trans$retired_at!="",!c("metadata","locations")]
 
 zoo_dl1 <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications.csv")
-zoo_dl <- zoo_dl1
+zoo_dl <- zoo_dl1#[100000:100010]
 zoo_dl$subject_ids
 length(unique(zoo_dl$subject_ids))
 length((zoo_dl$subject_ids))
@@ -77,11 +77,13 @@ annot_split2 <- strsplit(zoo_dl$annotations2,",answers:")
 annot_split <- strsplit(sapply(annot_split2,`[`,1),"choice:")
 zoo_dl$speciesID <- sapply(annot_split,`[`,2)
 zoo_dl$speciesID <- tolower(zoo_dl$speciesID)
-zoo_dlTEST <- zoo_dl[1000:20000]
-zoo_dlTEST$created_at
-head(zoo_dlTEST)
+zoo_dl$metadata
+zoo_dl$subject_data
 
-
+### instead of working way forward, work way back
+#sapply(annot_split2,`[`,2) will be all the stuff after: answers
+annot_split3 <- strsplit(sapply(annot_split2,`[`,2),",filters:")
+annot_split4 <- strsplit(sapply(annot_split3,`[`,1),",ARETHEREANYYOUNGPRESENT:")
 
 # zoo_dl_SUMMARY <- zoo_dlTEST[, .N, by=.(subject_ids,speciesID)][order(N),]#[.N,]
 zoo_dlTOT <-zoo_dl[, .(sum=length(speciesID)), by=.(subject_ids)]
