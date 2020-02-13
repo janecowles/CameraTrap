@@ -74,6 +74,8 @@ unique(exifsub$Directory[grep("2018-1-DJFMA/Gr",exifsub$Directory)])
 exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C00","2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C",exifsub$Directory)
 exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C0","2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C",exifsub$Directory)
 
+exifsub$Directory <- sub("2018-1-DJFMA/GridNetwork/C64/20180328","2018-1-DJFMA/GridNetwork/C64/20180328/100RECNX",exifsub$Directory)
+
 exifsub$Directory <- ifelse(exifsub$Directory%in%exifsub$Directory[grep("2018-1-DJFMA/2018-2-Spring-MAM",exifsub$Directory)],paste(exifsub$Directory,"100RECNX",sep="/"),exifsub$Directory)
 exifsub$Directory <- sub("100RECNX/100RECNX","100RECNX",exifsub$Directory)
 
@@ -82,7 +84,6 @@ exifsub$Directory <- sub("100RECNX/100RECNX","100RECNX",exifsub$Directory)
 
 
 exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C","2018-1-DJFMA/GridNetwork/C",exifsub$Directory)
-
 exifsub$SourceFile <- paste(exifsub$Directory,exifsub$FileName,sep="/")
 
 
@@ -130,6 +131,7 @@ setDT(exifsub)
 merge1 <- merge(rename_mapping,exifsub,by.x="old_path",by.y="SourceFile")
 
 tail(unique(rename_mapping$old_path[!rename_mapping$old_path%in%merge1$old_path]))
+(unique(exifsub$Directory[!exifsub$Directory%in%merge1$Directory.y]))
 
 # (rename_mapping$old_path[grep("2018-1-DJFMA/GridNetwork/C14",rename_mapping$old_path)])
 # rename_mapping$old_path[grep("C014",rename_mapping$old_path)]
