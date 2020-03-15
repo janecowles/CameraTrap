@@ -2,9 +2,9 @@
 #merging together subjects, classifications, and exif data. Exif data downloaded by FI, image_rename files downloaded from MSI (waiting for season 4 permissions from vlad), subjects and classifications downloaded from zooniverse.
 library(data.table)
 library(ggplot2)
+library(maptools)
 
-
-tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_6Feb.csv")
+tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_3Mar.csv")
 # tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
@@ -28,7 +28,7 @@ trans$site <- sapply(s_c_infosplit,`[`,2)
 
 rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 
-zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_6Feb.csv")
+zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_3Mar.csv")
 
 zoo_dl$annotations2 <- gsub("\"", "", zoo_dl$annotations )
 
@@ -144,13 +144,37 @@ FINAL <- merge(merge1,infolong,by.x="new_path",by.y="ImageNameWLOCATION")
 FINAL_wCOUNTS <- merge(FINAL,zoo_dlTOT,by.x="subject_id",by.y="subject_ids",all.x=T)
 #RN this is 860888 - uploading new file on 6 feb -- what changes?
 #write to a file
-fwrite(FINAL_wCOUNTS,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update.csv")
-
+fwrite(FINAL_wCOUNTS,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update15Mar.csv")
+names(FINAL_wCOUNTS)
 #actually not that many of these have just 1 classification. That'll change once we get Season 4 in here too? maybe? Waiting for Vlad to change the permissions
 sort(FINAL_wCOUNTS$sum,decreasing = T)
 
 # #a little plotting
 ggplot(FINAL_wCOUNTS,aes(speciesID,AmbientTemperature))+geom_boxplot()
 FINAL_wCOUNTS$date_taken <- as.POSIXct(FINAL_wCOUNTS$date_taken,format= "%Y:%m:%d %H:%M:%S")
-ggplot(FINAL_wCOUNTS,aes(speciesID,date_taken))+geom_boxplot()
+FINAL_wCOUNTS$DATE <- as.Date(FINAL_wCOUNTS$date_taken, tz = "")
+
+library(stringr)
+FINAL_wCOUNTS$Cam_num <- as.numeric(gsub("\\D", "", FINAL_wCOUNTS$site))
+FINAL_wCOUNTS$Cam_num_pad <- str_pad(FINAL_wCOUNTS$Cam_num,width=3,side=c("left"),pad="0")
+FINAL_wCOUNTS$Cam_letters <- gsub("[^a-zA-Z]", "", FINAL_wCOUNTS$site)
+
+FINAL_wCOUNTS$site_fixed <- ifelse(FINAL_wCOUNTS$Cam_letters=="CB",paste0("C",FINAL_wCOUNTS$Cam_num_pad,"B"),paste0("C",FINAL_wCOUNTS$Cam_num_pad))
+
+solarpos(FINAL_wCOUNTS$date_taken[1:4])
+sunriset(c(-93.194718,45.396570), FINAL_wCOUNTS$date_taken[1:4], proj4string=CRS("+proj=longlat +datum=WGS84"), direction=c("sunrise"), POSIXct.out=FALSE)
+
+FINAL_WCOUNTS$DAYNIGHT <- ifelse(FINAL_wCOUNTS$date_taken>  as.Date(sunrise.set(45.396570, -93.194718, FINAL_wCOUNTS$DATE, timezone = "", num.days = 1)[1,1],tz="")&FINAL_wCOUNTS$date_taken<  as.Date(sunrise.set(45.396570,-93.194718, FINAL_wCOUNTS$DATE, timezone = "", num.days = 1)[1,2],tz=""),"day","night")
+
+
+ggplot(FINAL_wCOUNTS,aes(speciesID,date_taken))+geom_jitter()
+ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$season=="S4",],aes(speciesID,date_taken))+geom_jitter()
+
+ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$speciesID=="deer",],aes(date_taken,site_fixed,color=season))+geom_point()
+ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$speciesID=="wolforcoyote",],aes(date_taken,site_fixed,color=season))+geom_point()
+
+FINAL_wCOUNTS$ImageName[FINAL_wCOUNTS$season=="S4"&FINAL_wCOUNTS$speciesID=="nothingthere"]
+
 # 
+
+cam_locs <- fread("C:/Users/cowl0037/Downloads/")

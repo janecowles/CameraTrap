@@ -35,8 +35,8 @@ library(keras)
 # install_keras()
 
 
-tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
-tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
+tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_3Mar.csv")
+# tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
 trans$Images <- sapply(metadatasep,`[`,9)
@@ -62,7 +62,7 @@ rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 # trans <- trans[trans$retired_at!=""&trans$retirement_reason=="consensus",!c("metadata","locations")]
 # trans <- trans[trans$retired_at!="",!c("metadata","locations")]
 
-zoo_dl1 <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications.csv")
+zoo_dl1 <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_3Mar.csv")
 zoo_dl <- zoo_dl1#[100000:100010]
 zoo_dl$subject_ids
 length(unique(zoo_dl$subject_ids))
@@ -93,12 +93,12 @@ zoo_dl_SUMMARY[zoo_dl_SUMMARY$subject_ids==29335271]
 sort(unique(ANSWERS$question__species))
 sort(unique(zoo_dl_SUMMARY$speciesID))
 
-ANSWERS <- fread("~/Downloads/CC_non_aggregated.csv")
-merge.ans <- ANSWERS[,c("season","site","roll","subject_id","question__species")]
-sp.sum <- merge.ans[,.(sum=length(subject_id)),.(question__species)]
-sp.sumord <- sp.sum[order(-sum)]
-sp.sumord$SPID <- -0:(nrow(sp.sumord)-1)
-merge.ans <- merge(merge.ans,sp.sumord[,-c("sum")],by=c("question__species"))
+# ANSWERS <- fread("~/Downloads/CC_non_aggregated.csv")
+# merge.ans <- ANSWERS[,c("season","site","roll","subject_id","question__species")]
+# sp.sum <- merge.ans[,.(sum=length(subject_id)),.(question__species)]
+# sp.sumord <- sp.sum[order(-sum)]
+# sp.sumord$SPID <- -0:(nrow(sp.sumord)-1)
+# merge.ans <- merge(merge.ans,sp.sumord[,-c("sum")],by=c("question__species"))
 
 
 # 
@@ -139,7 +139,7 @@ infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
 
 # infolong$ImageWithLocation <- paste(infolong$season,infolong$site,infolong$ImageName,sep="/")
 
-rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp,infolong2)
+# rm(ANSWERS,merge.ans,sp.sum,sp.sumord,trans,tmp,infolong2)
 
 
 
