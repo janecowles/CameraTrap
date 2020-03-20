@@ -4,7 +4,7 @@ library(data.table)
 library(ggplot2)
 library(maptools)
 
-tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_3Mar.csv")
+tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_19Mar.csv")
 # tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
 trans <- tmp
 metadatasep <- strsplit(trans$metadata,":")
@@ -26,155 +26,118 @@ s_c_infosplit <- strsplit(trans$IMG1NAME,"_")
 trans$season <- sapply(s_c_infosplit,`[`,1)
 trans$site <- sapply(s_c_infosplit,`[`,2)
 
-rm(metadatasep,imglist,s_c_info,s_c_infosplit)
+rm(metadatasep,imglist,s_c_info,s_c_infosplit,tmp)
 
-zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_3Mar.csv")
+zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_19Mar.csv")
 
 zoo_dl$annotations2 <- gsub("\"", "", zoo_dl$annotations )
-
-# annot_split <- strsplit(zoo_dl$annotations3,",")
-
-annot_split2 <- strsplit(zoo_dl$annotations2,",answers:")
+annot_split0 <- strsplit(zoo_dl$annotations2,",filters:")
+annot_split2 <- strsplit(sapply(annot_split0,`[`,1),",answers:")
 annot_split <- strsplit(sapply(annot_split2,`[`,1),"choice:")
-zoo_dl$speciesID <- sapply(annot_split,`[`,2)
-zoo_dl$speciesID <- tolower(zoo_dl$speciesID)
+zoo_dl$speciesID <- tolower(sapply(annot_split,`[`,2))
+
+annot_split3 <- strsplit(sapply(annot_split2,`[`,2),"HOWMANY:")
+annot_split4 <- strsplit(sapply(annot_split3,`[`,2),",WHATBEHAVIORSDOYOUSEE:")
+zoo_dl$Antlers <- sapply(strsplit(sapply(annot_split4,`[`,1),"ANTLERS:"),`[`,2)
+zoo_dl$HowMany <- as.numeric(gsub("[^0-9.]", "",sapply(annot_split4,`[`,1)))
+annot_split5 <- strsplit(sapply(annot_split4,`[`,2),",ARETHEREANYYOUNGPRESENT:")
+zoo_dl$Young <- gsub("}","",sapply(strsplit(sapply(annot_split5,`[`,2),","),`[`,1))
+
+annot_split6 <- strsplit(sapply(annot_split5,`[`,1),",IFYOUCHOSEEATINGHOWMANYBISONAREEATING:")
+zoo_dl$BisonNumberEating <- as.numeric(gsub("[^0-9.]", "",sapply(annot_split6,`[`,2)))
+
+zoo_dl$Activities <- gsub("}","",sapply(annot_split6,`[`,1))
+zoo_dl$LyingDown <- ifelse(grepl("LYINGDOWN",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
+zoo_dl$Standing <- ifelse(grepl("STANDING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
+zoo_dl$Moving <- ifelse(grepl("MOVING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
+zoo_dl$Eating <- ifelse(grepl("EATING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
+zoo_dl$Interacting <- ifelse(grepl("INTERACTING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
+
+summary(zoo_dl)
+head(zoo_dl)
+# is.na.table <- function(x){table(is.na(x))}
+# sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],is.na.table)
+###### RUNNING THIS RUINS STACKS SOMEHOW? DON'T DO IT-- sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],table)
+
+# ISSUE: some annotations contain more  than one set of answers?? - cut off anything more than the first one, for now!
+# multipleann <- zoo_dl[nchar(zoo_dl$annotations2)>300,]
+# head(multipleann)
 
 
 #WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
 zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
 
-
 #this is for later when we want to maybe cut out images that only have 1 classification, or something of that sort.... re-merged in below
-zoo_dlTOT <-zoo_dl[, .(sum=length(speciesID)), by=.(subject_ids)] 
+zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids)]
+
 #take the top classification for each subject
 zoo_dl_SUMMARY <- zoo_dl[, .N, by=.(subject_ids,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=subject_ids]
 
+myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
+myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
+
+# zoo_dl_sp <- zoo_dl[paste(zoo_dl$subject_ids,zoo_dl$speciesID)%in%paste(zoo_dl_SUMMARY$subject_ids,zoo_dl_SUMMARY$speciesID),]
+zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting)), by=.(subject_ids,speciesID)]
+head(zoo_dl_COUNTBYSP)
+
+
+zoo_dl_sum2 <- merge(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP,by=c("subject_ids","speciesID"),all.x=T,all.y=F)
+
+rm(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP)
+
+
 #merging subject info with classification info
-info <- merge(trans,zoo_dl_SUMMARY,by.x=c("subject_id"),by.y="subject_ids")
+info <- merge(trans,zoo_dl_sum2,by.x=c("subject_id"),by.y="subject_ids")
 #that was by subject, now make long by image so we can merge with other files
-infolong <- melt(info,id.vars=c("season","site","subject_id","speciesID"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
+infolong <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
 #i always forget how to make two variables long at the same time... so doing it an ugly way
-infolong2 <- melt(info,id.vars=c("season","site","subject_id","speciesID"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageNameWLOCATION")
+infolong2 <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageNameWLOCATION")
 infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
 #data.tables are better
 setDT(infolong)
 
 
-exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/img_meta.csv")
-#so much info! this is what I decided was important. Includes a ton of time variables and temperature and image name info
-exifsub <- exifdat[,c(1,3,4,7:9,25:37)]
-#these subdirectories must've been changed since the upload, so fixing that here.
-# exifsub$SourceFile <- sub("/IMG","/100RECNX/IMG",exifsub$SourceFile)
-# exifsub$SourceFile <- sub("100RECNX/100RECNX","100RECNX",exifsub$SourceFile)
-exifsub$Directory <- sub("2018-1-DJFMA/2018-1-Winter-DJF","2018-1-DJFMA",exifsub$Directory)
 
-#### TESTING FOR THE SPRING ONE.
-unique(exifsub$Directory[grep("2018-1-DJFMA/2018-2-Spring-MAM",exifsub$Directory)])
-unique(exifsub$Directory[grep("2018-1-DJFMA/Gr",exifsub$Directory)])
-exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C00","2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C",exifsub$Directory)
-exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C0","2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C",exifsub$Directory)
+rm(infolong2)
 
-exifsub$Directory <- sub("2018-1-DJFMA/GridNetwork/C64/20180328","2018-1-DJFMA/GridNetwork/C64/20180328/100RECNX",exifsub$Directory)
-
-exifsub$Directory <- ifelse(exifsub$Directory%in%exifsub$Directory[grep("2018-1-DJFMA/2018-2-Spring-MAM",exifsub$Directory)],paste(exifsub$Directory,"100RECNX",sep="/"),exifsub$Directory)
-exifsub$Directory <- sub("100RECNX/100RECNX","100RECNX",exifsub$Directory)
-
-
-# rename_mapping$old_path <- sub("2018-1-DJFMA/GridNetwork/C64/20180328/100RECNX","2018-1-DJFMA/GridNetwork/C64/20180328",rename_mapping$old_path)
-
-
-exifsub$Directory <- sub("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/C","2018-1-DJFMA/GridNetwork/C",exifsub$Directory)
-exifsub$SourceFile <- paste(exifsub$Directory,exifsub$FileName,sep="/")
-
-
-
-# exifsub$SourceFile <- sub("2018-1-DJFMA/2018-2-Spring-MAM","2018-1-DJFMA",exifsub$SourceFile) #this just isn't in the rename_mapping - must not have been uploaded???
-
-# read in the conversion files that vlad uploaded to MSI. I put them in a folder called exif_merge, and call them by the name pattern, lapply fread and bind them together... i think it works.
-rename_files <-list.files(path="C:/Users/cowl0037/Downloads/Exif_Merge",pattern="image_rename_mapping")
-rename_mapping <- rbindlist(lapply(paste0("C:/Users/cowl0037/Downloads/Exif_Merge/",rename_files),fread))
-rename_mapping$old_path <- sub("2018-1-DJFMAA","2018-1-DJFMA",rename_mapping$old_path)
-rename_mapping$old_path <- sub("2018-1-DJFMA/GridNetwork/C15/20180327/101RECNX","2018-1-DJFMA/GridNetwork/C15/20180327/100RECNX",rename_mapping$old_path)
-rename_mapping$old_path <- sub("2018-2-MJJA/GridNetwork/C100/20810603/100RECNX","2018-2-MJJA/GridNetwork/C100/20810603",rename_mapping$old_path)
-
-
-old_path_path <- strsplit(rename_mapping$old_path,"/IMG")
-old_path_path2 <- strsplit(sapply(old_path_path,`[`,1),"/PICT")
-rename_mapping$Directory <- sapply(old_path_path2,`[`,1)
-
-# unique(exifsub$Directory[grep("2018-1-DJFMA/2018-2-Spring-MAM/GridNetwork/",exifsub$Directory)])
-# unique(rename_mapping$Directory[grep("2018-1-DJFMA/GridNetwork/",rename_mapping$Directory)])
-
-list.exif <- unique(exifsub$Directory[grep("SOND/Grid",exifsub$Directory)])
-list.map <- unique(rename_mapping$Directory[grep("SOND/Grid",rename_mapping$Directory)])
-intersect(list.map,list.exif)
-mapnames <- list.map[!list.map%in%list.exif]
-exifnames <- list.exif[!list.exif%in%list.map]
-for(i in 1:length(mapnames)){
-  rename_mapping$old_path <- sub(mapnames[i],exifnames[i],rename_mapping$old_path)
-}
-
-old_path_path <- strsplit(rename_mapping$old_path,"/IMG")
-old_path_path2 <- strsplit(sapply(old_path_path,`[`,1),"/PICT")
-rename_mapping$Directory <- sapply(old_path_path2,`[`,1)
-
-
-unique(rename_mapping$Directory[!rename_mapping$Directory%in%exifsub$Directory])
-unique(exifsub$Directory[!exifsub$Directory%in%rename_mapping$Directory])
-
-
-#yay data.tables
-setDT(rename_mapping)
-setDT(exifsub)
-
-#merge 1 - combine the mapping files with exif info by the original path names
-merge1 <- merge(rename_mapping,exifsub,by.x="old_path",by.y="SourceFile")
-
-tail(unique(rename_mapping$old_path[!rename_mapping$old_path%in%merge1$old_path]))
-(unique(exifsub$Directory[!exifsub$Directory%in%merge1$Directory.y]))
-
-# (rename_mapping$old_path[grep("2018-1-DJFMA/GridNetwork/C14",rename_mapping$old_path)])
-# rename_mapping$old_path[grep("C014",rename_mapping$old_path)]
-# THIS MERGE IS MISSING WHAT IS LABELED SPRING within 2018-1-DJFMA FOLDER AND IT WILL NOT BE EASY TO CORRECT.### 11,000 pictures missing because of this.
-# merge 2 - combine that file with the species info (etc) by the new path
-FINAL <- merge(merge1,infolong,by.x="new_path",by.y="ImageNameWLOCATION")
+exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/Merged_EXIF_MatchingPicNames.csv")
+names(exifdat)
+combdat <- merge(exifdat,infolong,by.x="new_path",by.y="ImageNameWLOCATION")
 
 #you could use zoo_dlTOT to subset subject_ids out that have a classification count of less than a certain value. I'll just add that in right here and you can decide later ... (merge 3)
 
-FINAL_wCOUNTS <- merge(FINAL,zoo_dlTOT,by.x="subject_id",by.y="subject_ids",all.x=T)
-#RN this is 860888 - uploading new file on 6 feb -- what changes?
-#write to a file
-fwrite(FINAL_wCOUNTS,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update15Mar.csv")
-names(FINAL_wCOUNTS)
-#actually not that many of these have just 1 classification. That'll change once we get Season 4 in here too? maybe? Waiting for Vlad to change the permissions
-sort(FINAL_wCOUNTS$sum,decreasing = T)
+combdat_wCOUNTS <- merge(combdat,zoo_dlTOT,by.x="subject_id",by.y="subject_ids",all.x=T)
 
-# #a little plotting
-ggplot(FINAL_wCOUNTS,aes(speciesID,AmbientTemperature))+geom_boxplot()
-FINAL_wCOUNTS$date_taken <- as.POSIXct(FINAL_wCOUNTS$date_taken,format= "%Y:%m:%d %H:%M:%S")
-FINAL_wCOUNTS$DATE <- as.Date(FINAL_wCOUNTS$date_taken, tz = "")
+combdat_clean <-combdat_wCOUNTS[combdat_wCOUNTS$img123=="IMG1NAME"]
+
+combdat_clean$date_taken <- as.POSIXct(combdat_clean$date_taken,format= "%Y:%m:%d %H:%M:%S")
+combdat_clean$DATE <- as.Date(combdat_clean$date_taken, tz = "")
+combdat_clean$YEAR <- as.numeric(format(combdat_clean$DATE,"%Y"))
+combdat_clean$MONTH <- as.numeric(format(combdat_clean$DATE,"%m"))
 
 library(stringr)
-FINAL_wCOUNTS$Cam_num <- as.numeric(gsub("\\D", "", FINAL_wCOUNTS$site))
-FINAL_wCOUNTS$Cam_num_pad <- str_pad(FINAL_wCOUNTS$Cam_num,width=3,side=c("left"),pad="0")
-FINAL_wCOUNTS$Cam_letters <- gsub("[^a-zA-Z]", "", FINAL_wCOUNTS$site)
+combdat_clean$Cam_num <- as.numeric(gsub("\\D", "", combdat_clean$site))
+combdat_clean$Cam_num_pad <- str_pad(combdat_clean$Cam_num,width=3,side=c("left"),pad="0")
+combdat_clean$Cam_letters <- gsub("[^a-zA-Z]", "", combdat_clean$site)
 
-FINAL_wCOUNTS$site_fixed <- ifelse(FINAL_wCOUNTS$Cam_letters=="CB",paste0("C",FINAL_wCOUNTS$Cam_num_pad,"B"),paste0("C",FINAL_wCOUNTS$Cam_num_pad))
+combdat_clean$site_fixed <- ifelse(combdat_clean$Cam_letters=="CB",paste0("C",combdat_clean$Cam_num_pad,"B"),paste0("C",combdat_clean$Cam_num_pad))
 
-solarpos(FINAL_wCOUNTS$date_taken[1:4])
-sunriset(c(-93.194718,45.396570), FINAL_wCOUNTS$date_taken[1:4], proj4string=CRS("+proj=longlat +datum=WGS84"), direction=c("sunrise"), POSIXct.out=FALSE)
+df <- combdat_clean[!combdat_clean$speciesID%in%c("humanorvehicle","nothingthere")]
 
-FINAL_WCOUNTS$DAYNIGHT <- ifelse(FINAL_wCOUNTS$date_taken>  as.Date(sunrise.set(45.396570, -93.194718, FINAL_wCOUNTS$DATE, timezone = "", num.days = 1)[1,1],tz="")&FINAL_wCOUNTS$date_taken<  as.Date(sunrise.set(45.396570,-93.194718, FINAL_wCOUNTS$DATE, timezone = "", num.days = 1)[1,2],tz=""),"day","night")
+# fwrite(df,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update20Mar.csv")
+
+ggplot(df[df$Antlers%in%c("YES","NO"),],aes(x=Antlers))+geom_bar()+facet_wrap("MONTH")
+ggplot(df[df$speciesID%in%c("deer")&df$Antlers%in%c("YES","NO"),],aes(date_taken,modecountbysp))+geom_jitter()+geom_smooth()+facet_wrap("Antlers")
 
 
-ggplot(FINAL_wCOUNTS,aes(speciesID,date_taken))+geom_jitter()
-ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$season=="S4",],aes(speciesID,date_taken))+geom_jitter()
+cam_locs <- fread("C:/Users/cowl0037/Downloads/CedarCreek_FieldMetadata_Completed.csv")
+str(cam_locs)
+grid_locs <- cam_locs[cam_locs$`GRID/ROAD`=="GRID",]
+grid_locs$SiteID_num <- as.numeric(gsub("\\D", "", grid_locs$SiteID))
 
-ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$speciesID=="deer",],aes(date_taken,site_fixed,color=season))+geom_point()
-ggplot(FINAL_wCOUNTS[FINAL_wCOUNTS$speciesID=="wolforcoyote",],aes(date_taken,site_fixed,color=season))+geom_point()
-
-FINAL_wCOUNTS$ImageName[FINAL_wCOUNTS$season=="S4"&FINAL_wCOUNTS$speciesID=="nothingthere"]
-
-# 
-
-cam_locs <- fread("C:/Users/cowl0037/Downloads/")
+ALLDAT <- merge(df,grid_locs,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
+names(ALLDAT)
+paste(colnames(ALLDAT),collapse="\",\"")
+ALLDAT_NEC <- ALLDAT[,c("season","site","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","site_fixed","SiteID","Date","GRID/ROAD","GPS_X_PRE","GPS_Y_PRE","GPS_X_ACT","GPS_Y_ACT","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
+  
+fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc20Mar.csv")
