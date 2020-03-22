@@ -62,7 +62,7 @@ head(zoo_dl)
 # ISSUE: some annotations contain more  than one set of answers?? - cut off anything more than the first one, for now!
 # multipleann <- zoo_dl[nchar(zoo_dl$annotations2)>300,]
 # head(multipleann)
-
+rm(annot_split,annot_split0,annot_split2,annot_split3,annot_split4,annot_split5,annot_split6)
 
 #WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
 zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
@@ -130,14 +130,17 @@ ggplot(df[df$Antlers%in%c("YES","NO"),],aes(x=Antlers))+geom_bar()+facet_wrap("M
 ggplot(df[df$speciesID%in%c("deer")&df$Antlers%in%c("YES","NO"),],aes(date_taken,modecountbysp))+geom_jitter()+geom_smooth()+facet_wrap("Antlers")
 
 
-cam_locs <- fread("C:/Users/cowl0037/Downloads/CedarCreek_FieldMetadata_Completed.csv")
-str(cam_locs)
-grid_locs <- cam_locs[cam_locs$`GRID/ROAD`=="GRID",]
-grid_locs$SiteID_num <- as.numeric(gsub("\\D", "", grid_locs$SiteID))
+wolfpts <- fread("C:/Users/cowl0037/Downloads/WolfPts_UTM.csv")
+wolfpts$SiteID_num <- as.numeric(gsub("\\D", "", wolfpts$SiteID))
+ggplot(wolfpts,aes(Easting,Northing,color=SiteID_num))+geom_point()
 
-ALLDAT <- merge(df,grid_locs,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
+ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
+ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="bison"],aes(Easting,Northing),size=4,color="red")+labs(title="bison")
+ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="blackbear"],aes(Easting,Northing),size=4,color="green")+labs(title="black bear")
+
+table(ALLDAT$site[ALLDAT$speciesID=="bison"])
 names(ALLDAT)
 paste(colnames(ALLDAT),collapse="\",\"")
-ALLDAT_NEC <- ALLDAT[,c("season","site","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","site_fixed","SiteID","Date","GRID/ROAD","GPS_X_PRE","GPS_Y_PRE","GPS_X_ACT","GPS_Y_ACT","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
+ALLDAT_NEC <- ALLDAT[,c("season","site","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","site_fixed","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
-fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc20Mar.csv")
+fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc21Mar.csv")
