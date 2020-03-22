@@ -123,11 +123,11 @@ combdat_clean$Cam_letters <- gsub("[^a-zA-Z]", "", combdat_clean$site)
 combdat_clean$site_fixed <- ifelse(combdat_clean$Cam_letters=="CB",paste0("C",combdat_clean$Cam_num_pad,"B"),paste0("C",combdat_clean$Cam_num_pad))
 
 df <- combdat_clean[!combdat_clean$speciesID%in%c("humanorvehicle","nothingthere")]
-
+df$modecountbysp <- as.numeric(ifelse(df$modecountbysp==1120,11,df$modecountbysp))
 # fwrite(df,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update20Mar.csv")
-
-ggplot(df[df$Antlers%in%c("YES","NO"),],aes(x=Antlers))+geom_bar()+facet_wrap("MONTH")
-ggplot(df[df$speciesID%in%c("deer")&df$Antlers%in%c("YES","NO"),],aes(date_taken,modecountbysp))+geom_jitter()+geom_smooth()+facet_wrap("Antlers")
+# 
+# ggplot(df[df$Antlers%in%c("YES","NO"),],aes(x=Antlers))+geom_bar()+facet_wrap("MONTH")
+# ggplot(df[df$speciesID%in%c("deer")&df$Antlers%in%c("YES","NO"),],aes(date_taken,modecountbysp))+geom_jitter()+geom_smooth()+facet_wrap("Antlers")
 
 
 wolfpts <- fread("C:/Users/cowl0037/Downloads/WolfPts_UTM.csv")
@@ -135,12 +135,12 @@ wolfpts$SiteID_num <- as.numeric(gsub("\\D", "", wolfpts$SiteID))
 ggplot(wolfpts,aes(Easting,Northing,color=SiteID_num))+geom_point()
 
 ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
-ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="bison"],aes(Easting,Northing),size=4,color="red")+labs(title="bison")
-ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="blackbear"],aes(Easting,Northing),size=4,color="green")+labs(title="black bear")
+# ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="bison"],aes(Easting,Northing),size=4,color="red")+labs(title="bison")
+# ggplot(ALLDAT,aes(Easting,Northing,color=Cam_num))+geom_point()+geom_point(data=ALLDAT[ALLDAT$speciesID=="blackbear"],aes(Easting,Northing),size=4,color="green")+labs(title="black bear")
 
-table(ALLDAT$site[ALLDAT$speciesID=="bison"])
-names(ALLDAT)
-paste(colnames(ALLDAT),collapse="\",\"")
+# table(ALLDAT$site[ALLDAT$speciesID=="bison"])
+# names(ALLDAT)
+# paste(colnames(ALLDAT),collapse="\",\"")
 ALLDAT_NEC <- ALLDAT[,c("season","site","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","site_fixed","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
 fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc21Mar.csv")
