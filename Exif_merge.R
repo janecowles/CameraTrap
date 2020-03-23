@@ -96,7 +96,8 @@ infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
 #data.tables are better
 setDT(infolong)
 
-
+# fwrite(infolong,"C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
+# infolong <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
 
 rm(infolong2)
 
@@ -129,7 +130,7 @@ df$modecountbysp <- as.numeric(ifelse(df$modecountbysp==1120,11,df$modecountbysp
 # ggplot(df[df$Antlers%in%c("YES","NO"),],aes(x=Antlers))+geom_bar()+facet_wrap("MONTH")
 # ggplot(df[df$speciesID%in%c("deer")&df$Antlers%in%c("YES","NO"),],aes(date_taken,modecountbysp))+geom_jitter()+geom_smooth()+facet_wrap("Antlers")
 
-
+unique(df$Cam_num)
 wolfpts <- fread("C:/Users/cowl0037/Downloads/WolfPts_UTM.csv")
 wolfpts$SiteID_num <- as.numeric(gsub("\\D", "", wolfpts$SiteID))
 ggplot(wolfpts,aes(Easting,Northing,color=SiteID_num))+geom_point()
@@ -141,6 +142,6 @@ ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
 # table(ALLDAT$site[ALLDAT$speciesID=="bison"])
 # names(ALLDAT)
 # paste(colnames(ALLDAT),collapse="\",\"")
-ALLDAT_NEC <- ALLDAT[,c("season","site","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","site_fixed","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
+ALLDAT_NEC <- ALLDAT[,c("season","site_fixed","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
-fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc21Mar.csv")
+fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc23Mar.csv")
