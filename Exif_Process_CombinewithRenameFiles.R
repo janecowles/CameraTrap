@@ -16,7 +16,12 @@ rename_mapping$Orig_filename <- gsub("/","",substr(rename_mapping$old_path,(ncha
 rename_mapping$OrigDirectory <- sapply(strsplit(rename_mapping$Origold_path,"/IMG"),`[`,1)
 rename_mapping$OrigDirectory <- sapply(strsplit(rename_mapping$OrigDirectory,"/PICT"),`[`,1)
 rename_mapping$Directory <- rename_mapping$OrigDirectory # make new thing to alter, no alterations to origdirectory anymore
-rename_mapping$
+### add in season, site, roll, new file name info
+# pathsplit <- strsplit(rename_mapping$new_path,"/")
+# rename_mapping$season <- sapply(pathsplit,`[`,1)
+# unique(rename_mapping$season)
+# table(duplicated(rename_mapping$new_path))
+
 #original comparison
 intersect(unique(exifsub$OrigDirectory),unique(rename_mapping$OrigDirectory))
 

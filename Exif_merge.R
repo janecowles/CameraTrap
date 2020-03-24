@@ -4,31 +4,52 @@ library(data.table)
 library(ggplot2)
 library(maptools)
 
-tmp <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_19Mar.csv")
-# tmp <- fread("~/Downloads/cedar-creek-eyes-on-the-wild-subjects.csv")
-trans <- tmp
-metadatasep <- strsplit(trans$metadata,":")
-trans$Images <- sapply(metadatasep,`[`,9)
-trans<-trans[!is.na(trans$Images),]
-trans$Images  <- gsub("[^[:alnum:][:blank:]+./_-]", "", trans$Images )
-trans$Images  <- gsub(".JPG",".JPG:",trans$Images )
-imglist <- strsplit(trans$Images,":")
-trans$IMG1WLOCATION <- sapply(imglist,`[`,1)
-trans$IMG2WLOCATION <- sapply(imglist,`[`,2)
-trans$IMG3WLOCATION <- sapply(imglist,`[`,3)
-
-s_c_info <- strsplit(trans$IMG1WLOCATION,"/")
-trans$IMG1NAME <- sapply(strsplit(trans$IMG1WLOCATION,"/"),`[`,4)
-trans$IMG2NAME <- sapply(strsplit(trans$IMG2WLOCATION,"/"),`[`,4)
-trans$IMG3NAME <- sapply(strsplit(trans$IMG3WLOCATION,"/"),`[`,4)
-
-s_c_infosplit <- strsplit(trans$IMG1NAME,"_")
-trans$season <- sapply(s_c_infosplit,`[`,1)
-trans$site <- sapply(s_c_infosplit,`[`,2)
-
-rm(metadatasep,imglist,s_c_info,s_c_infosplit,tmp)
+# subj_info <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_19Mar.csv")
+# table(subj_info$workflow_id)
+# subj_BD <- subj_info[is.na(subj_info$workflow_id)|subj_info$workflow_id==5702,]
+# metadatasep <- strsplit(subj_BD$metadata,":")
+# subj_BD$Images <- sapply(metadatasep,`[`,9)
+# subj_BD<-subj_BD[!is.na(subj_BD$Images),]
+# subj_BD$Images  <- gsub("[^[:alnum:][:blank:]+./_-]", "", subj_BD$Images )
+# subj_BD$Images  <- gsub(".JPG",".JPG:",subj_BD$Images )
+# imglist <- strsplit(subj_BD$Images,":")
+# subj_BD$IMG1WLOCATION <- sapply(imglist,`[`,1)
+# subj_BD$IMG2WLOCATION <- sapply(imglist,`[`,2)
+# subj_BD$IMG3WLOCATION <- sapply(imglist,`[`,3)
+# 
+# s_c_info <- strsplit(subj_BD$IMG1WLOCATION,"/")
+# subj_BD$IMG1NAME <- sapply(strsplit(subj_BD$IMG1WLOCATION,"/"),`[`,4)
+# subj_BD$IMG2NAME <- sapply(strsplit(subj_BD$IMG2WLOCATION,"/"),`[`,4)
+# subj_BD$IMG3NAME <- sapply(strsplit(subj_BD$IMG3WLOCATION,"/"),`[`,4)
+# 
+# s_c_infosplit <- strsplit(subj_BD$IMG1NAME,"_")
+# subj_BD$season <- sapply(s_c_infosplit,`[`,1)
+# subj_BD$site <- sapply(s_c_infosplit,`[`,2)
+# 
+# rm(metadatasep,imglist,s_c_info,s_c_infosplit)
 
 zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_19Mar.csv")
+
+zoo_dl$subject_data2 <- gsub("\"", "", zoo_dl$subject_data)
+
+
+subjsplit <- strsplit(zoo_dl$subject_data2,"#original_images:\\[")
+imgsplit <- strsplit(sapply(subjsplit,`[`,2),",")
+zoo_dl$IMG1WLOCATION <- gsub("]}}","",sapply(imgsplit,`[`,1))
+zoo_dl$IMG1NAME <- sapply(strsplit(zoo_dl$IMG1WLOCATION,"/"),`[`,4)
+zoo_dl$IMG2WLOCATION <- gsub("]}}","",sapply(imgsplit,`[`,2))
+zoo_dl$IMG2NAME <- sapply(strsplit(zoo_dl$IMG2WLOCATION,"/"),`[`,4)
+zoo_dl$IMG3WLOCATION <- gsub("]}}","",sapply(imgsplit,`[`,3))
+zoo_dl$IMG3NAME <- sapply(strsplit(zoo_dl$IMG3WLOCATION,"/"),`[`,4)
+
+siteseason_info <- strsplit(zoo_dl$IMG1NAME,"_")
+zoo_dl$season <- sapply(siteseason_info,`[`,1)
+zoo_dl$site <- sapply(siteseason_info,`[`,2)
+
+subjsplit2 <- strsplit(sapply(subjsplit,`[`,1),",")
+zoo_dl$retirement_reason <- gsub("}","",sapply(strsplit(sapply(subjsplit2,`[`,8),"retirement_reason:"),`[`,2))
+
+#### in the process of making subject dataset unnecessary
 
 zoo_dl$annotations2 <- gsub("\"", "", zoo_dl$annotations )
 annot_split0 <- strsplit(zoo_dl$annotations2,",filters:")
@@ -55,6 +76,8 @@ zoo_dl$Interacting <- ifelse(grepl("INTERACTING",zoo_dl$Activities),"Y",ifelse(i
 
 summary(zoo_dl)
 head(zoo_dl)
+
+
 # is.na.table <- function(x){table(is.na(x))}
 # sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],is.na.table)
 ###### RUNNING THIS RUINS STACKS SOMEHOW? DON'T DO IT-- sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],table)
@@ -62,13 +85,15 @@ head(zoo_dl)
 # ISSUE: some annotations contain more  than one set of answers?? - cut off anything more than the first one, for now!
 # multipleann <- zoo_dl[nchar(zoo_dl$annotations2)>300,]
 # head(multipleann)
-rm(annot_split,annot_split0,annot_split2,annot_split3,annot_split4,annot_split5,annot_split6)
+rm(annot_split,annot_split0,annot_split2,annot_split3,annot_split4,annot_split5,annot_split6,subjsplit,subjsplit2)
 
 #WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
 zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
+zoo_dl <- zoo_dl[!is.na(zoo_dl$IMG1NAME),]
 
 #this is for later when we want to maybe cut out images that only have 1 classification, or something of that sort.... re-merged in below
-zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids)]
+# zoo_dlTOT2 <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids)]
+zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids,IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
 
 #take the top classification for each subject
 zoo_dl_SUMMARY <- zoo_dl[, .N, by=.(subject_ids,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=subject_ids]
@@ -77,7 +102,7 @@ myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
 myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
 
 # zoo_dl_sp <- zoo_dl[paste(zoo_dl$subject_ids,zoo_dl$speciesID)%in%paste(zoo_dl_SUMMARY$subject_ids,zoo_dl_SUMMARY$speciesID),]
-zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting)), by=.(subject_ids,speciesID)]
+system.time(zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting)), by=.(subject_ids,speciesID)])
 head(zoo_dl_COUNTBYSP)
 
 
@@ -85,45 +110,43 @@ zoo_dl_sum2 <- merge(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP,by=c("subject_ids","species
 
 rm(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP)
 
-
-#merging subject info with classification info
-info <- merge(trans,zoo_dl_sum2,by.x=c("subject_id"),by.y="subject_ids")
-#that was by subject, now make long by image so we can merge with other files
-infolong <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
-#i always forget how to make two variables long at the same time... so doing it an ugly way
-infolong2 <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageNameWLOCATION")
-infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
-#data.tables are better
-setDT(infolong)
-
-# fwrite(infolong,"C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
-# infolong <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
-
-rm(infolong2)
+class_df <- merge(zoo_dl_sum2,zoo_dlTOT,by="subject_ids",all.x=T)
+# #merging subject info with classification info
+# info <- merge(subj_BD,zoo_dl_sum2,by.x=c("subject_id"),by.y="subject_ids")
+# #that was by subject, now make long by image so we can merge with other files
+# infolong <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
+# #i always forget how to make two variables long at the same time... so doing it an ugly way
+# infolong2 <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageNameWLOCATION")
+# infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
+# #data.tables are better
+# setDT(infolong)
+# 
+# # fwrite(infolong,"C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
+# # infolong <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
+# table(duplicated(infolong$ImageNameWLOCATION))
+# rm(infolong2)
 
 exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/Merged_EXIF_MatchingPicNames.csv")
 names(exifdat)
-combdat <- merge(exifdat,infolong,by.x="new_path",by.y="ImageNameWLOCATION")
 
+combdat <- merge(class_df,exifdat,by.x="IMG1WLOCATION",by.y="new_path",all.x=T)
+names(combdat)
 #you could use zoo_dlTOT to subset subject_ids out that have a classification count of less than a certain value. I'll just add that in right here and you can decide later ... (merge 3)
 
-combdat_wCOUNTS <- merge(combdat,zoo_dlTOT,by.x="subject_id",by.y="subject_ids",all.x=T)
 
-combdat_clean <-combdat_wCOUNTS[combdat_wCOUNTS$img123=="IMG1NAME"]
-
-combdat_clean$date_taken <- as.POSIXct(combdat_clean$date_taken,format= "%Y:%m:%d %H:%M:%S")
-combdat_clean$DATE <- as.Date(combdat_clean$date_taken, tz = "")
-combdat_clean$YEAR <- as.numeric(format(combdat_clean$DATE,"%Y"))
-combdat_clean$MONTH <- as.numeric(format(combdat_clean$DATE,"%m"))
+combdat$date_taken <- as.POSIXct(combdat$date_taken,format= "%Y:%m:%d %H:%M:%S")
+combdat$DATE <- as.Date(combdat$date_taken, tz = "")
+combdat$YEAR <- as.numeric(format(combdat$DATE,"%Y"))
+combdat$MONTH <- as.numeric(format(combdat$DATE,"%m"))
 
 library(stringr)
-combdat_clean$Cam_num <- as.numeric(gsub("\\D", "", combdat_clean$site))
-combdat_clean$Cam_num_pad <- str_pad(combdat_clean$Cam_num,width=3,side=c("left"),pad="0")
-combdat_clean$Cam_letters <- gsub("[^a-zA-Z]", "", combdat_clean$site)
+combdat$Cam_num <- as.numeric(gsub("\\D", "", combdat$site))
+combdat$Cam_num_pad <- str_pad(combdat$Cam_num,width=3,side=c("left"),pad="0")
+combdat$Cam_letters <- gsub("[^a-zA-Z]", "", combdat$site)
 
-combdat_clean$site_fixed <- ifelse(combdat_clean$Cam_letters=="CB",paste0("C",combdat_clean$Cam_num_pad,"B"),paste0("C",combdat_clean$Cam_num_pad))
+combdat$site_fixed <- ifelse(combdat$Cam_letters=="CB",paste0("C",combdat$Cam_num_pad,"B"),paste0("C",combdat$Cam_num_pad))
 
-df <- combdat_clean[!combdat_clean$speciesID%in%c("humanorvehicle","nothingthere")]
+df <- combdat[!combdat$speciesID%in%c("humanorvehicle","nothingthere")]
 df$modecountbysp <- as.numeric(ifelse(df$modecountbysp==1120,11,df$modecountbysp))
 # fwrite(df,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update20Mar.csv")
 # 
@@ -144,4 +167,4 @@ ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
 # paste(colnames(ALLDAT),collapse="\",\"")
 ALLDAT_NEC <- ALLDAT[,c("season","site_fixed","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
-fwrite(ALLDAT_NEC,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc23Mar.csv")
+fwrite(ALLDAT,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc24Mar.csv")

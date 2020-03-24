@@ -5,8 +5,13 @@ library(rgeos)
 library(sf)
 
 #this was 67590 -- see what it is now?
-df <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc23Mar.csv")
-str(df)
+df23Mar <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc23Mar.csv")
+str(df23Mar)
+df24Mar <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc24Mar.csv")
+str(df24Mar)
+
+df23Mar$ImageName[!df23Mar$ImageName%in%c(df24Mar$IMG1NAME)]
+
 setDT(df)
 # dfcam <- df[,.(MeanCount=mean(modecountbysp),TotalCount=sum(modecountbysp),MonthlyAmbientTemperature=mean(AmbientTemperature)),by=.(season,site,speciesID,YEAR,MONTH,Cam_num,site_fixed,Easting,Northing)]
 dfcam <- df[,.(CAMERAMeanCount=mean(modecountbysp),CAMERATotalCount=sum(modecountbysp)),by=.(Cam_num,site_fixed,Easting,Northing)]

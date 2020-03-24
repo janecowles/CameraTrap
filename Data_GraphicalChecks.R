@@ -1,6 +1,8 @@
+
+df_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc23Mar.csv")
 summary(df_fin)
 table(df_fin$site_fixed,df_fin$season)
-
+tapply(df_fin$NumberofClassifications,df_fin$season,mean)
 df_fin$date_taken <- as.POSIXct(df_fin$date_taken,format= "%Y-%m-%dT%H:%M:%SZ")
 
 ggplot(df_fin[df_fin$Cam_num<50,],aes(date_taken,site_fixed,color=season))+geom_line(size=4)
