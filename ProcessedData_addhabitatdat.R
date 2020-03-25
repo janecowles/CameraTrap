@@ -79,6 +79,8 @@ tapply(dfcam_fin$C_TEXT,dfcam_fin$NLCD_DESCRIPTION,unique)
 tapply(dfcam_fin$ENAME,dfcam_fin$NLCD_DESCRIPTION,unique)
 
 df_fin <- merge(df,dfcam_fin,by=c("site_fixed","Cam_num","Easting","Northing"),all.x=T)
+df_fin$season <- gsub("0","",df_fin$season)
+df_fin$season <- gsub("S","S0",df_fin$season)
 df_fin <- df_fin[,-c("site","CAMERAMeanCount","CAMERATotalCount","geometry","Matching_path","old_path","Origold_path","OrigDirectory.x", "Directory.x", "Orig_filename", "SourceFile", "FileName", "Directory.y","OrigDirectory.y", "FileModifyDate", "FileAccessDate","FileCreateDate", "DateTimeOriginal","Cam_num_pad","Cam_letters")]
 fwrite(df_fin,"C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc25Mar.csv")
 
