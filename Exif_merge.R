@@ -35,7 +35,7 @@ zoo_dl$subject_data2 <- gsub("\"", "", zoo_dl$subject_data)
 
 subjsplit <- strsplit(zoo_dl$subject_data2,"#original_images:\\[")
 imgsplit <- strsplit(sapply(subjsplit,`[`,2),",")
-zoo_dl$IMG1WLOCATION <- gsub("]}}","",sapply(imgsplit,`[`,1))
+zoo_dl$IMG1WLOCATION <- gsub("]","",gsub("]}}","",sapply(imgsplit,`[`,1)))
 zoo_dl$IMG1NAME <- sapply(strsplit(zoo_dl$IMG1WLOCATION,"/"),`[`,4)
 zoo_dl$IMG2WLOCATION <- gsub("]}}","",sapply(imgsplit,`[`,2))
 zoo_dl$IMG2NAME <- sapply(strsplit(zoo_dl$IMG2WLOCATION,"/"),`[`,4)
@@ -93,45 +93,39 @@ zoo_dl <- zoo_dl[!is.na(zoo_dl$IMG1NAME),]
 
 #this is for later when we want to maybe cut out images that only have 1 classification, or something of that sort.... re-merged in below
 # zoo_dlTOT2 <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids)]
-zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids,IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
+zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
 
 #take the top classification for each subject
-zoo_dl_SUMMARY <- zoo_dl[, .N, by=.(subject_ids,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=subject_ids]
+zoo_dl_SUMMARY <- zoo_dl[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=IMG1WLOCATION]
 
 myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
 myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
+SUBJIDALL <- function(x) as.character(paste(unique(x),collapse="_"))
 
 # zoo_dl_sp <- zoo_dl[paste(zoo_dl$subject_ids,zoo_dl$speciesID)%in%paste(zoo_dl_SUMMARY$subject_ids,zoo_dl_SUMMARY$speciesID),]
-system.time(zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting)), by=.(subject_ids,speciesID)])
+system.time(zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting),SUBJIDLIST=SUBJIDALL(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
 head(zoo_dl_COUNTBYSP)
 
 
-zoo_dl_sum2 <- merge(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP,by=c("subject_ids","speciesID"),all.x=T,all.y=F)
+zoo_dl_COUNTBYSP$SUBJIDLIST[nchar(zoo_dl_COUNTBYSP$SUBJIDLIST)!=8]
+zoo_dl_COUNTBYSP$NCHAR_SUBJIDLIST <- nchar(zoo_dl_COUNTBYSP$SUBJIDLIST)
+
+zoo_dl_sum2 <- merge(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP,by=c("IMG1WLOCATION","speciesID"),all.x=T,all.y=F)
 
 rm(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP)
 
-class_df <- merge(zoo_dl_sum2,zoo_dlTOT,by="subject_ids",all.x=T)
-# #merging subject info with classification info
-# info <- merge(subj_BD,zoo_dl_sum2,by.x=c("subject_id"),by.y="subject_ids")
-# #that was by subject, now make long by image so we can merge with other files
-# infolong <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1NAME","IMG2NAME","IMG3NAME"),variable.name = "img123",value.name = "ImageName")
-# #i always forget how to make two variables long at the same time... so doing it an ugly way
-# infolong2 <- melt(info,id.vars=c("season","site","subject_id","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting"),measure.vars=c("IMG1WLOCATION","IMG2WLOCATION","IMG3WLOCATION"),variable.name = "imgnumloc",value.name = "ImageNameWLOCATION")
-# infolong$ImageNameWLOCATION <- infolong2$ImageNameWLOCATION
-# #data.tables are better
-# setDT(infolong)
-# 
-# # fwrite(infolong,"C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
-# # infolong <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/DataProcessing_midpoint_23Mar.csv")
-# table(duplicated(infolong$ImageNameWLOCATION))
-# rm(infolong2)
+class_df <- merge(zoo_dl_sum2,zoo_dlTOT,by="IMG1WLOCATION",all.x=T)
 
+table(class_df$season[class_df$NCHAR_SUBJIDLIST!=8])
+
+##### EXIF DATA! Processed in Exif_Process_CombinewithRenameFiles.R
 exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/Merged_EXIF_MatchingPicNames.csv")
 names(exifdat)
 
 combdat <- merge(class_df,exifdat,by.x="IMG1WLOCATION",by.y="new_path",all.x=T)
 names(combdat)
-#you could use zoo_dlTOT to subset subject_ids out that have a classification count of less than a certain value. I'll just add that in right here and you can decide later ... (merge 3)
+
+
 
 
 combdat$date_taken <- as.POSIXct(combdat$date_taken,format= "%Y:%m:%d %H:%M:%S")
@@ -165,6 +159,6 @@ ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
 # table(ALLDAT$site[ALLDAT$speciesID=="bison"])
 # names(ALLDAT)
 # paste(colnames(ALLDAT),collapse="\",\"")
-ALLDAT_NEC <- ALLDAT[,c("season","site_fixed","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
+# ALLDAT_NEC <- ALLDAT[,c("season","site_fixed","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
-fwrite(ALLDAT,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCproc24Mar.csv")
+fwrite(ALLDAT,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCNEWproc24Mar.csv")
