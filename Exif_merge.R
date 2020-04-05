@@ -6,8 +6,8 @@ library(maptools)
 library(stringr)
 
 #### FUNCTIONS FOR LATER
-myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
-myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
+# myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))]) #i now calc mode in data.table format.
+# myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
 PASTETOGETHER <- function(x) as.character(paste(unique(x),collapse="_"))
 
 
@@ -17,7 +17,8 @@ orig_n <- nrow(zoo_dl)
 biodetect_n <- nrow(zoo_dl[zoo_dl$workflow_id==5702,])
 #WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
 ###FOR MEREDITH: Did not cut out the other workflows, check how well that works in getting all images at the end.
-# zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
+
+zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
 
 #get subject information, then delete anything without image names (they are from a test set)
 zoo_dl$subject_data2 <- gsub("\"", "", zoo_dl$subject_data)
@@ -128,12 +129,22 @@ zoo_wdoublesTOT <-zoo_wdoubles[, .(NumberofClassifications=length(speciesID)), b
 zoo_wdoubles_SUMMARY <- zoo_wdoubles[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=IMG1WLOCATION]
 
 
-system.time(zoo_wdoubles_COUNTBYSP <- zoo_wdoubles[, .(modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting),SUBJIDLIST=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
-head(zoo_wdoubles_COUNTBYSP)
+# system.time(zoo_wdoubles_COUNTBYSP <- zoo_wdoubles[, .(modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting),SUBJIDLIST=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
 
+zoo_wdoubles_COUNTBYSP <- setkeyv(zoo_wdoubles[, .N, by = .(IMG1WLOCATION,speciesID,HowMany,Antlers,Young,BisonNumberEating,LyingDown,Standing,Moving,Eating,Interacting)], #tabulate 
+  c("IMG1WLOCATION","speciesID", "N") #sort by N 
+  )[, .(ModeHowMany = HowMany[.N], ModeAntlers=Antlers[.N], ModeYoung=Young[.N], ModeBisonNumberEating=BisonNumberEating[.N], ModeLyingDown=LyingDown[.N], ModeStanding=Standing[.N], ModeMoving=Moving[.N], ModeEating=Eating[.N], ModeInteracting=Interacting[.N]), by = .(IMG1WLOCATION,speciesID)]
 
-zoo_wdoubles_COUNTBYSP$SUBJIDLIST[nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)!=8]
-zoo_wdoubles_COUNTBYSP$NCHAR_SUBJIDLIST <- nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)
+# testmerge <- merge(zoo_wdoubles_COUNTBYSP,ModeCharacterCols2,by=c("IMG1WLOCATION","speciesID"))
+# testmerge$ModeHowMany==testmerge$modecountbysp
+# testmerge$ModeAntlers==testmerge$Antlers
+
+# 
+# head(zoo_wdoubles_COUNTBYSP)
+# 
+# 
+# zoo_wdoubles_COUNTBYSP$SUBJIDLIST[nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)!=8]
+# zoo_wdoubles_COUNTBYSP$NCHAR_SUBJIDLIST <- nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)
 
 zoo_wdoubles_sum2 <- merge(zoo_wdoubles_SUMMARY,zoo_wdoubles_COUNTBYSP,by=c("IMG1WLOCATION","speciesID"),all.x=T,all.y=F)
 
@@ -141,8 +152,11 @@ zoo_wdoubles_sum2 <- merge(zoo_wdoubles_SUMMARY,zoo_wdoubles_COUNTBYSP,by=c("IMG
 zoo_img2sp_SUMMARY <- zoo_img2sp[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID_2ndSp=speciesID[2L]), keyby=IMG1WLOCATION]
 
 
-system.time(zoo_img2sp_COUNTBYSP <- zoo_img2sp[, .(modecountbysp_2ndSp=myfunnum(HowMany), Antlers_2ndSp=myfun(Antlers),Young_2ndSp=myfun(Young), BisonNumberEating_2ndSp=myfun(BisonNumberEating), LyingDown_2ndSp=myfun(LyingDown), Standing_2ndSp=myfun(Standing), Moving_2ndSp=myfun(Moving), Eating_2ndSp=myfun(Eating), Interacting_2ndSp=myfun(Interacting),SUBJIDLIST_2ndSp=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
-head(zoo_img2sp_COUNTBYSP)
+# system.time(zoo_img2sp_COUNTBYSP <- zoo_img2sp[, .(modecountbysp_2ndSp=myfunnum(HowMany), Antlers_2ndSp=myfun(Antlers),Young_2ndSp=myfun(Young), BisonNumberEating_2ndSp=myfun(BisonNumberEating), LyingDown_2ndSp=myfun(LyingDown), Standing_2ndSp=myfun(Standing), Moving_2ndSp=myfun(Moving), Eating_2ndSp=myfun(Eating), Interacting_2ndSp=myfun(Interacting),SUBJIDLIST_2ndSp=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
+
+zoo_img2sp_COUNTBYSP <- setkeyv(zoo_img2sp[, .N, by = .(IMG1WLOCATION,speciesID,HowMany,Antlers,Young,BisonNumberEating,LyingDown,Standing,Moving,Eating,Interacting)], #tabulate 
+  c("IMG1WLOCATION","speciesID", "N") #sort by N 
+  )[, .(ModeHowMany_2ndSp = HowMany[.N], ModeAntlers_2ndSp=Antlers[.N], ModeYoung_2ndSp=Young[.N], ModeBisonNumberEating_2ndSp=BisonNumberEating[.N], ModeLyingDown_2ndSp=LyingDown[.N], ModeStanding_2ndSp=Standing[.N], ModeMoving_2ndSp=Moving[.N], ModeEating_2ndSp=Eating[.N], ModeInteracting_2ndSp=Interacting[.N]), by = .(IMG1WLOCATION,speciesID)]
 
 
 
@@ -152,24 +166,30 @@ head(zoo_img2sp_sum2)
 zoo_comb <- merge(zoo_wdoubles_sum2,zoo_img2sp_sum2,by="IMG1WLOCATION",all=T)
 
 class_df <- merge(zoo_comb,zoo_wdoublesTOT,by="IMG1WLOCATION",all.x=T)
-
+unique(class_df$site)
 
 ###check for weird with animal or not... maybe I should sep that out before doing these summaries?
 #### CHECK FOR ROAD CAMERAS? THOSE EXIST?
 
-table(class_df$season[class_df$NCHAR_SUBJIDLIST!=8])
+# table(class_df$season[class_df$NCHAR_SUBJIDLIST!=8])
 
 ##### EXIF DATA! Processed in Exif_Process_CombinewithRenameFiles.R
-exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/Merged_EXIF_MatchingPicNames.csv")
-names(exifdat)
+# exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/Merged_EXIF_MatchingPicNames.csv")
+# names(exifdat)
 
-combdat <- merge(class_df,exifdat,by.x="IMG1WLOCATION",by.y="new_path",all.x=T)
+
+exif_files <-list.files(path="C:/Users/cowl0037/Downloads/Exif_Merge/Zoo_Exif",pattern="_exif_data")
+exifdat <- rbindlist(lapply(paste0("C:/Users/cowl0037/Downloads/Exif_Merge/Zoo_Exif/",exif_files),fread))
+exifdat$aligned_path <- gsub("/home/isbell/shared/albums/","", exifdat$image_path_original)
+exifdat$aligned_path <- gsub("/home/isbell/shared/Snapshot Cedar Creek Images/","", exifdat$aligned_path)
+
+combdat <- merge(class_df,exifdat,by.x="IMG1WLOCATION",by.y="aligned_path",all.x=T)
 names(combdat)
 
 
+#####UPDATE BELOW HERE.
 
-
-combdat$date_taken <- as.POSIXct(combdat$date_taken,format= "%Y:%m:%d %H:%M:%S")
+combdat$date_taken <- as.POSIXct(combdat$datetime_exif,format= "%Y-%m-%d %H:%M:%S")
 combdat$DATE <- as.Date(combdat$date_taken, tz = "")
 combdat$YEAR <- as.numeric(format(combdat$DATE,"%Y"))
 combdat$MONTH <- as.numeric(format(combdat$DATE,"%m"))

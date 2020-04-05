@@ -1,3 +1,5 @@
+#THIS FILE SHOULD NO LONGER BE NECESSARY. EXIF DATA NOW USED FROM PROCESSING PIPELINE (BETTER MATCHING)
+
 # exif -- making "clean" file
 
 exifdat <- fread("C:/Users/cowl0037/Downloads/Exif_Merge/img_meta.csv")
