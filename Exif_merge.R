@@ -3,35 +3,24 @@
 library(data.table)
 library(ggplot2)
 library(maptools)
+library(stringr)
 
-# subj_info <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-subjects_19Mar.csv")
-# table(subj_info$workflow_id)
-# subj_BD <- subj_info[is.na(subj_info$workflow_id)|subj_info$workflow_id==5702,]
-# metadatasep <- strsplit(subj_BD$metadata,":")
-# subj_BD$Images <- sapply(metadatasep,`[`,9)
-# subj_BD<-subj_BD[!is.na(subj_BD$Images),]
-# subj_BD$Images  <- gsub("[^[:alnum:][:blank:]+./_-]", "", subj_BD$Images )
-# subj_BD$Images  <- gsub(".JPG",".JPG:",subj_BD$Images )
-# imglist <- strsplit(subj_BD$Images,":")
-# subj_BD$IMG1WLOCATION <- sapply(imglist,`[`,1)
-# subj_BD$IMG2WLOCATION <- sapply(imglist,`[`,2)
-# subj_BD$IMG3WLOCATION <- sapply(imglist,`[`,3)
-# 
-# s_c_info <- strsplit(subj_BD$IMG1WLOCATION,"/")
-# subj_BD$IMG1NAME <- sapply(strsplit(subj_BD$IMG1WLOCATION,"/"),`[`,4)
-# subj_BD$IMG2NAME <- sapply(strsplit(subj_BD$IMG2WLOCATION,"/"),`[`,4)
-# subj_BD$IMG3NAME <- sapply(strsplit(subj_BD$IMG3WLOCATION,"/"),`[`,4)
-# 
-# s_c_infosplit <- strsplit(subj_BD$IMG1NAME,"_")
-# subj_BD$season <- sapply(s_c_infosplit,`[`,1)
-# subj_BD$site <- sapply(s_c_infosplit,`[`,2)
-# 
-# rm(metadatasep,imglist,s_c_info,s_c_infosplit)
+#### FUNCTIONS FOR LATER
+myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
+myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
+PASTETOGETHER <- function(x) as.character(paste(unique(x),collapse="_"))
 
-zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_19Mar.csv")
 
+
+zoo_dl <- fread("C:/Users/cowl0037/Downloads/cedar-creek-eyes-on-the-wild-classifications_2April.csv")
+orig_n <- nrow(zoo_dl)
+biodetect_n <- nrow(zoo_dl[zoo_dl$workflow_id==5702,])
+#WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
+###FOR MEREDITH: Did not cut out the other workflows, check how well that works in getting all images at the end.
+# zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
+
+#get subject information, then delete anything without image names (they are from a test set)
 zoo_dl$subject_data2 <- gsub("\"", "", zoo_dl$subject_data)
-
 
 subjsplit <- strsplit(zoo_dl$subject_data2,"#original_images:\\[")
 imgsplit <- strsplit(sapply(subjsplit,`[`,2),",")
@@ -49,10 +38,54 @@ zoo_dl$site <- sapply(siteseason_info,`[`,2)
 subjsplit2 <- strsplit(sapply(subjsplit,`[`,1),",")
 zoo_dl$retirement_reason <- gsub("}","",sapply(strsplit(sapply(subjsplit2,`[`,8),"retirement_reason:"),`[`,2))
 
-#### in the process of making subject dataset unnecessary
 
+table(is.na(zoo_dl$IMG1NAME))
+
+
+
+#cut out anything from the test set -- can find these by deleting those with no image names
+zoo_dl <- zoo_dl[!is.na(zoo_dl$IMG1NAME),]
+
+
+### now to get the classification information
 zoo_dl$annotations2 <- gsub("\"", "", zoo_dl$annotations )
+
+zoo_dl$NumberOfChoices <- str_count(zoo_dl$annotations2,"choice:")
+zoo_dl$IsOneNothingOrHuman <- str_count(zoo_dl$annotations2,"HUMAN")+str_count(zoo_dl$annotations2,"NOTHING")
+zoo_dl$IsOneNothingOrHuman <- ifelse(zoo_dl$IsOneNothingOrHuman>0,1,0)
+
+zoo_dl_choiceMode <- zoo_dl[, .(ModeNumberChoices=myfunnum(NumberOfChoices),SumNothingOrHuman=sum(IsOneNothingOrHuman),NumberofClassifications=length(NumberOfChoices)), by=.(IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
+
+zoo_dl_choiceMode$ProportionContainingHumanOrNothing<-(zoo_dl_choiceMode$SumNothingOrHuman/zoo_dl_choiceMode$NumberofClassifications)
+
+NonHumanDoubles <- zoo_dl[zoo_dl$IMG1NAME%in%zoo_dl_choiceMode$IMG1NAME[zoo_dl_choiceMode$ModeNumberChoices==2&zoo_dl_choiceMode$ProportionContainingHumanOrNothing<0.5],]
+
+secondannot_split0 <- strsplit(NonHumanDoubles$annotations2,",filters:")
+secondannot_split2 <- strsplit(sapply(secondannot_split0,`[`,2),",answers:")
+secondannot_split <- strsplit(sapply(secondannot_split2,`[`,1),"choice:")
+NonHumanDoubles$speciesID <- tolower(sapply(secondannot_split,`[`,2))
+secondannot_split3 <- strsplit(sapply(secondannot_split2,`[`,2),"HOWMANY:")
+secondannot_split4 <- strsplit(sapply(secondannot_split3,`[`,2),",WHATBEHAVIORSDOYOUSEE:")
+NonHumanDoubles$Antlers <- sapply(strsplit(sapply(secondannot_split4,`[`,1),"ANTLERS:"),`[`,2)
+NonHumanDoubles$HowMany <- as.numeric(gsub("[^0-9.]", "",sapply(secondannot_split4,`[`,1)))
+secondannot_split5 <- strsplit(sapply(secondannot_split4,`[`,2),",ARETHEREANYYOUNGPRESENT:")
+NonHumanDoubles$Young <- gsub("}","",sapply(strsplit(sapply(secondannot_split5,`[`,2),","),`[`,1))
+
+secondannot_split6 <- strsplit(sapply(secondannot_split5,`[`,1),",IFYOUCHOSEEATINGHOWMANYBISONAREEATING:")
+NonHumanDoubles$BisonNumberEating <- as.numeric(gsub("[^0-9.]", "",sapply(secondannot_split6,`[`,2)))
+
+NonHumanDoubles$Activities <- gsub("}","",sapply(secondannot_split6,`[`,1))
+NonHumanDoubles$LyingDown <- ifelse(grepl("LYINGDOWN",NonHumanDoubles$Activities),"Y",ifelse(is.na(NonHumanDoubles$Activities),NA,"N"))
+NonHumanDoubles$Standing <- ifelse(grepl("STANDING",NonHumanDoubles$Activities),"Y",ifelse(is.na(NonHumanDoubles$Activities),NA,"N"))
+NonHumanDoubles$Moving <- ifelse(grepl("MOVING",NonHumanDoubles$Activities),"Y",ifelse(is.na(NonHumanDoubles$Activities),NA,"N"))
+NonHumanDoubles$Eating <- ifelse(grepl("EATING",NonHumanDoubles$Activities),"Y",ifelse(is.na(NonHumanDoubles$Activities),NA,"N"))
+NonHumanDoubles$Interacting <- ifelse(grepl("INTERACTING",NonHumanDoubles$Activities),"Y",ifelse(is.na(NonHumanDoubles$Activities),NA,"N"))
+head(NonHumanDoubles)
+NonHumanDoubles$MainorDouble <-"Double"
+
+####### back to full dataframe, extract species info
 annot_split0 <- strsplit(zoo_dl$annotations2,",filters:")
+
 annot_split2 <- strsplit(sapply(annot_split0,`[`,1),",answers:")
 annot_split <- strsplit(sapply(annot_split2,`[`,1),"choice:")
 zoo_dl$speciesID <- tolower(sapply(annot_split,`[`,2))
@@ -73,48 +106,56 @@ zoo_dl$Standing <- ifelse(grepl("STANDING",zoo_dl$Activities),"Y",ifelse(is.na(z
 zoo_dl$Moving <- ifelse(grepl("MOVING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
 zoo_dl$Eating <- ifelse(grepl("EATING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
 zoo_dl$Interacting <- ifelse(grepl("INTERACTING",zoo_dl$Activities),"Y",ifelse(is.na(zoo_dl$Activities),NA,"N"))
-
+zoo_dl$MainorDouble <- "Main"
 summary(zoo_dl)
 head(zoo_dl)
+zoo_end_n <- nrow(zoo_dl)
+zoo_wdoubles <- rbind(zoo_dl,NonHumanDoubles)
+zoo_wdoubles_n <- nrow(zoo_wdoubles)
+
+zoo_img2sp <- zoo_wdoubles[zoo_wdoubles$IMG1NAME%in%c(zoo_wdoubles$IMG1NAME[zoo_wdoubles$MainorDouble=="Double"]),]
+# zoo_img1sp <- zoo_wdoubles[!zoo_wdoubles$IMG1NAME%in%c(zoo_wdoubles$IMG1NAME[zoo_wdoubles$MainorDouble=="Double"]),]
 
 
-# is.na.table <- function(x){table(is.na(x))}
-# sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],is.na.table)
-###### RUNNING THIS RUINS STACKS SOMEHOW? DON'T DO IT-- sapply(zoo_dl[,c("speciesID","Antlers","HowMany","Young","BisonNumberEating","Activities")],table)
-
-# ISSUE: some annotations contain more  than one set of answers?? - cut off anything more than the first one, for now!
-# multipleann <- zoo_dl[nchar(zoo_dl$annotations2)>300,]
-# head(multipleann)
 rm(annot_split,annot_split0,annot_split2,annot_split3,annot_split4,annot_split5,annot_split6,subjsplit,subjsplit2)
 
-#WARNING-- now that animal or not workflow is in here, need to cut that out for current analyses
-zoo_dl <- zoo_dl[zoo_dl$workflow_id==5702,]
-zoo_dl <- zoo_dl[!is.na(zoo_dl$IMG1NAME),]
 
 #this is for later when we want to maybe cut out images that only have 1 classification, or something of that sort.... re-merged in below
-# zoo_dlTOT2 <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(subject_ids)]
-zoo_dlTOT <-zoo_dl[, .(NumberofClassifications=length(speciesID)), by=.(IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
+
+zoo_wdoublesTOT <-zoo_wdoubles[, .(NumberofClassifications=length(speciesID)), by=.(IMG1WLOCATION,IMG1NAME, IMG2WLOCATION, IMG2NAME, IMG3WLOCATION, IMG3NAME, season, site)]
 
 #take the top classification for each subject
-zoo_dl_SUMMARY <- zoo_dl[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=IMG1WLOCATION]
-
-myfunnum <- function(x) as.numeric(names(table(x))[which.max(table(x))])
-myfun <- function(x) as.character(names(table(x))[which.max(table(x))])
-SUBJIDALL <- function(x) as.character(paste(unique(x),collapse="_"))
-
-# zoo_dl_sp <- zoo_dl[paste(zoo_dl$subject_ids,zoo_dl$speciesID)%in%paste(zoo_dl_SUMMARY$subject_ids,zoo_dl_SUMMARY$speciesID),]
-system.time(zoo_dl_COUNTBYSP <- zoo_dl[, .(mediancountbysp=median(HowMany),modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting),SUBJIDLIST=SUBJIDALL(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
-head(zoo_dl_COUNTBYSP)
+zoo_wdoubles_SUMMARY <- zoo_wdoubles[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID=speciesID[1L]), keyby=IMG1WLOCATION]
 
 
-zoo_dl_COUNTBYSP$SUBJIDLIST[nchar(zoo_dl_COUNTBYSP$SUBJIDLIST)!=8]
-zoo_dl_COUNTBYSP$NCHAR_SUBJIDLIST <- nchar(zoo_dl_COUNTBYSP$SUBJIDLIST)
+system.time(zoo_wdoubles_COUNTBYSP <- zoo_wdoubles[, .(modecountbysp=myfunnum(HowMany), Antlers=myfun(Antlers),Young=myfun(Young), BisonNumberEating=myfun(BisonNumberEating), LyingDown=myfun(LyingDown), Standing=myfun(Standing), Moving=myfun(Moving), Eating=myfun(Eating), Interacting=myfun(Interacting),SUBJIDLIST=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
+head(zoo_wdoubles_COUNTBYSP)
 
-zoo_dl_sum2 <- merge(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP,by=c("IMG1WLOCATION","speciesID"),all.x=T,all.y=F)
 
-rm(zoo_dl_SUMMARY,zoo_dl_COUNTBYSP)
+zoo_wdoubles_COUNTBYSP$SUBJIDLIST[nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)!=8]
+zoo_wdoubles_COUNTBYSP$NCHAR_SUBJIDLIST <- nchar(zoo_wdoubles_COUNTBYSP$SUBJIDLIST)
 
-class_df <- merge(zoo_dl_sum2,zoo_dlTOT,by="IMG1WLOCATION",all.x=T)
+zoo_wdoubles_sum2 <- merge(zoo_wdoubles_SUMMARY,zoo_wdoubles_COUNTBYSP,by=c("IMG1WLOCATION","speciesID"),all.x=T,all.y=F)
+
+##### now for jut doubles, make secondary classifications 
+zoo_img2sp_SUMMARY <- zoo_img2sp[, .N, by=.(IMG1WLOCATION,speciesID)][order(-N), .(speciesID_2ndSp=speciesID[2L]), keyby=IMG1WLOCATION]
+
+
+system.time(zoo_img2sp_COUNTBYSP <- zoo_img2sp[, .(modecountbysp_2ndSp=myfunnum(HowMany), Antlers_2ndSp=myfun(Antlers),Young_2ndSp=myfun(Young), BisonNumberEating_2ndSp=myfun(BisonNumberEating), LyingDown_2ndSp=myfun(LyingDown), Standing_2ndSp=myfun(Standing), Moving_2ndSp=myfun(Moving), Eating_2ndSp=myfun(Eating), Interacting_2ndSp=myfun(Interacting),SUBJIDLIST_2ndSp=PASTETOGETHER(subject_ids)), by=.(IMG1WLOCATION,speciesID)])
+head(zoo_img2sp_COUNTBYSP)
+
+
+
+zoo_img2sp_sum2 <- merge(zoo_img2sp_SUMMARY,zoo_img2sp_COUNTBYSP,by.x=c("IMG1WLOCATION","speciesID_2ndSp"),by.y=c("IMG1WLOCATION","speciesID"),all.x=T,all.y=F)
+head(zoo_img2sp_sum2)
+
+zoo_comb <- merge(zoo_wdoubles_sum2,zoo_img2sp_sum2,by="IMG1WLOCATION",all=T)
+
+class_df <- merge(zoo_comb,zoo_wdoublesTOT,by="IMG1WLOCATION",all.x=T)
+
+
+###check for weird with animal or not... maybe I should sep that out before doing these summaries?
+#### CHECK FOR ROAD CAMERAS? THOSE EXIST?
 
 table(class_df$season[class_df$NCHAR_SUBJIDLIST!=8])
 
@@ -139,7 +180,7 @@ combdat$Cam_num_pad <- str_pad(combdat$Cam_num,width=3,side=c("left"),pad="0")
 combdat$Cam_letters <- gsub("[^a-zA-Z]", "", combdat$site)
 
 combdat$site_fixed <- ifelse(combdat$Cam_letters=="CB",paste0("C",combdat$Cam_num_pad,"B"),paste0("C",combdat$Cam_num_pad))
-
+ # df <- combdat
 df <- combdat[!combdat$speciesID%in%c("humanorvehicle","nothingthere")]
 df$modecountbysp <- as.numeric(ifelse(df$modecountbysp==1120,11,df$modecountbysp))
 # fwrite(df,"C:/Users/cowl0037/Downloads/Exif_Merge/OUTPUT_EXIFandSPID_update20Mar.csv")
@@ -161,4 +202,20 @@ ALLDAT <- merge(df,wolfpts,by.x="Cam_num",by.y="SiteID_num",all.x=T,all.y=F)
 # paste(colnames(ALLDAT),collapse="\",\"")
 # ALLDAT_NEC <- ALLDAT[,c("season","site_fixed","Easting","Northing","speciesID","mediancountbysp","modecountbysp","Antlers","Young","BisonNumberEating","LyingDown","Standing","Moving","Eating","Interacting","NumberofClassifications","DATE","YEAR","MONTH","subject_id","date_taken","MoonPhase","AmbientTemperature","Cam_num","SiteID","new_path","old_path","FileName","img123","ImageName","AmbientTemperatureFahrenheit")]
   
-fwrite(ALLDAT,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCNEWproc24Mar.csv")
+fwrite(ALLDAT,"C:/Users/cowl0037/Downloads/EOTW_DataOutput_ALL_JCproc4April.csv")
+
+
+### habitat
+dfcam_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_CameraHabitat_JCproc26Mar.csv")
+
+tapply(dfcam_fin$C_TEXT,dfcam_fin$NLCD_DESCRIPTION,unique)
+tapply(dfcam_fin$ENAME,dfcam_fin$NLCD_DESCRIPTION,unique)
+
+df_fin <- merge(ALLDAT,dfcam_fin,by=c("site_fixed","Cam_num","Easting","Northing"),all.x=T)
+df_fin$season <- gsub("0","",df_fin$season)
+df_fin$season <- gsub("S","S0",df_fin$season)
+df_fin <- df_fin[,-c("site","CAMERAMeanCount","CAMERATotalCount","geometry","Matching_path","old_path","Origold_path","OrigDirectory.x", "Directory.x", "Orig_filename", "SourceFile", "FileName", "Directory.y","OrigDirectory.y", "FileModifyDate", "FileAccessDate","FileCreateDate", "DateTimeOriginal","Cam_num_pad","Cam_letters")]
+fwrite(df_fin,"C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc2April.csv")
+
+table(df_fin$speciesID,df_fin$speciesID_2ndSp)
+

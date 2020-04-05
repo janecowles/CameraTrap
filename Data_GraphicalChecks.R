@@ -1,7 +1,7 @@
 library(data.table)
 library(ggplot2)
 
-df_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc25Mar.csv")
+df_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc26Mar.csv")
 summary(df_fin)
 table(df_fin$site_fixed,df_fin$season)
 tapply(df_fin$NumberofClassifications,df_fin$season,mean)
@@ -10,15 +10,18 @@ df_fin$date_taken <- as.POSIXct(df_fin$date_taken,format= "%Y-%m-%dT%H:%M:%SZ")
 ggplot(df_fin[df_fin$Cam_num<50,],aes(date_taken,site_fixed,color=season))+geom_line(size=4)
 ggplot(df_fin[df_fin$Cam_num>49,],aes(date_taken,site_fixed,color=season))+geom_line(size=4)
 
-
-table(df_fin$speciesID[df_fin$Cam_num==38])
-table(df_fin$modecountbysp[df_fin$Cam_num==38])
-
 speciesbyhabitat <- as.data.frame(table(df_fin$biome,df_fin$season,df_fin$speciesID))
 str(speciesbyhabitat)
 colnames(speciesbyhabitat) <- c("Habitat","Season","Species","Freq")
 
 ggplot(speciesbyhabitat,aes(Habitat,Species,fill=log(Freq)))+geom_tile()+theme(axis.text.x = element_text(angle = 45, hjust = 1))+facet_wrap("Season",nrow=1)
+
+speciesbyhabitat <- as.data.frame(table(df_fin$biome,df_fin$MONTH,df_fin$speciesID))
+str(speciesbyhabitat)
+colnames(speciesbyhabitat) <- c("Habitat","Month","Species","Freq")
+
+ggplot(speciesbyhabitat,aes(Habitat,Species,fill=log(Freq)))+geom_tile()+theme(axis.text.x = element_text(angle = 45, hjust = 1))+facet_wrap("Month",nrow=1)
+
 
 ggplot(speciesbyhabitat[speciesbyhabitat$Var2%in%c("deer","bison","turkey","otherbird"),],aes(Var1,Var2,fill=log(Freq)))+geom_tile()+theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ggplot(speciesbyhabitat[!speciesbyhabitat$Var2%in%c("deer","bison","turkey","otherbird"),],aes(Var1,Var2,fill=log(Freq)))+geom_tile()+theme(axis.text.x = element_text(angle = 30, hjust = 1))

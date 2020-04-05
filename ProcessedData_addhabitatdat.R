@@ -5,7 +5,7 @@ library(rgeos)
 library(sf)
 
 
-df <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCNEWproc24Mar.csv")
+df <- fread("C:/Users/cowl0037/Downloads/EOTW_DataOutput_JCNEWproc26Mar.csv")
 
 setDT(df)
 # dfcam <- df[,.(MeanCount=mean(modecountbysp),TotalCount=sum(modecountbysp),MonthlyAmbientTemperature=mean(AmbientTemperature)),by=.(season,site,speciesID,YEAR,MONTH,Cam_num,site_fixed,Easting,Northing)]
@@ -72,8 +72,8 @@ table(dfcam_fin$C_TEXT,dfcam_fin$NLCD_DESCRIPTION)
 
 dfcam_fin$biome <- ifelse(grepl("orest",dfcam_fin$C_TEXT),"forest",ifelse(grepl("rass",dfcam_fin$C_TEXT)|grepl("rairie",dfcam_fin$C_TEXT),"grassland",ifelse(grepl("swamp",dfcam_fin$C_TEXT)|grepl("marsh",dfcam_fin$C_TEXT)|grepl("fen",dfcam_fin$C_TEXT)|grepl("et meadow",dfcam_fin$C_TEXT)|grepl("pland deciduous shrubland",dfcam_fin$C_TEXT),"wetlands",ifelse(grepl("oodland",dfcam_fin$C_TEXT)|grepl("avanna",dfcam_fin$C_TEXT),"savanna",ifelse(grepl("avement",dfcam_fin$C_TEXT)|grepl("impervious",dfcam_fin$C_TEXT),"developed",ifelse(dfcam_fin$Cam_num%in%c(39,46),"wetlands",ifelse(dfcam_fin$Cam_num%in%c(31),"grassland",NA)))))))
 
-fwrite(dfcam_fin,"C:/Users/cowl0037/Downloads/EOTW_CameraHabitat_JCproc24Mar.csv")
-dfcam_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_CameraHabitat_JCproc24Mar.csv")
+fwrite(dfcam_fin,"C:/Users/cowl0037/Downloads/EOTW_CameraHabitat_JCproc26Mar.csv")
+dfcam_fin <- fread("C:/Users/cowl0037/Downloads/EOTW_CameraHabitat_JCproc246Mar.csv")
 
 tapply(dfcam_fin$C_TEXT,dfcam_fin$NLCD_DESCRIPTION,unique)
 tapply(dfcam_fin$ENAME,dfcam_fin$NLCD_DESCRIPTION,unique)
@@ -82,5 +82,5 @@ df_fin <- merge(df,dfcam_fin,by=c("site_fixed","Cam_num","Easting","Northing"),a
 df_fin$season <- gsub("0","",df_fin$season)
 df_fin$season <- gsub("S","S0",df_fin$season)
 df_fin <- df_fin[,-c("site","CAMERAMeanCount","CAMERATotalCount","geometry","Matching_path","old_path","Origold_path","OrigDirectory.x", "Directory.x", "Orig_filename", "SourceFile", "FileName", "Directory.y","OrigDirectory.y", "FileModifyDate", "FileAccessDate","FileCreateDate", "DateTimeOriginal","Cam_num_pad","Cam_letters")]
-fwrite(df_fin,"C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc25Mar.csv")
+fwrite(df_fin,"C:/Users/cowl0037/Downloads/EOTW_DataOutputwHabitat_JCproc26Mar.csv")
 
